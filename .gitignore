@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Pipeline outputs / artifacts
+audio_out/
+*.mp3
+*.wav
+*.m4b
+
+# Scratch / test data
+scratch_*
+*.tmp
+book.pdf
+samples/
+tuning/
+
+# OS cruft
+.DS_Store
