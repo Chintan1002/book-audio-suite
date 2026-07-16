@@ -14,12 +14,23 @@ audio_out/
 *.wav
 *.m4b
 
+# Web app runtime
+jobs/
+*.log
+
+# Local Claude Code settings (keep launch.json, ignore machine-local)
+.claude/settings.local.json
+
 # Scratch / test data
 scratch_*
 *.tmp
 book.pdf
 samples/
 tuning/
+toc_book.pdf
+heading_book.pdf
+textpdf_demo.pdf
+*_out/
 
 # OS cruft
 .DS_Store

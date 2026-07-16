@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audiobook Creator</title>
+<style>
+  :root { color-scheme: dark; --bg:#0f1115; --card:#181b22; --line:#2a2f3a;
+          --fg:#e7e9ee; --muted:#9aa3b2; --accent:#6ea8fe; --ok:#4ade80; --err:#f87171; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:20px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:14px 0 5px; }
+  input, select { width:100%; padding:10px 12px; background:#0f1218; color:var(--fg);
+          border:1px solid var(--line); border-radius:8px; font-size:14px; }
+  input[type=file] { padding:8px; }
+  .row { display:flex; gap:12px; } .row > div { flex:1; }
+  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:8px;
+           background:var(--accent); color:#08122a; font-weight:600; font-size:15px;
+           cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .progress { margin-top:22px; display:none; }
+  .bar { height:10px; background:#0f1218; border:1px solid var(--line);
+         border-radius:99px; overflow:hidden; }
+  .fill { height:100%; width:0%; background:var(--accent); transition:width .4s ease; }
+  .stage { display:flex; justify-content:space-between; font-size:13px;
+           color:var(--muted); margin-bottom:8px; }
+  .results { margin-top:22px; display:none; }
+  .dl { display:block; padding:12px 14px; margin-top:10px; background:#0f1218;
+        border:1px solid var(--line); border-radius:8px; color:var(--fg);
+        text-decoration:none; }
+  .dl:hover { border-color:var(--accent); }
+  .dl small { color:var(--muted); }
+  .err { color:var(--err); margin-top:16px; display:none; white-space:pre-wrap; }
+  .badge { color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📖→🎧 Audiobook Creator</h1>
+  <p class="sub">Upload a PDF, pick a voice, get a chaptered audiobook.</p>
+
+  <div class="card">
+    <form id="form">
+      <label>PDF file</label>
+      <input type="file" id="pdf" accept="application/pdf" required>
+
+      <label>Voice</label>
+      <select id="voice"><option>Loading voices…</option></select>
+
+      <div class="row">
+        <div>
+          <label>Narration speed</label>
+          <select id="rate">
+            <option value="">Normal</option>
+            <option value="-8%">Slightly slower (-8%)</option>
+            <option value="-12%" selected>Slower (-12%)</option>
+            <option value="-18%">Slowest (-18%)</option>
+            <option value="+8%">Faster (+8%)</option>
+          </select>
+        </div>
+        <div>
+          <label>Full-book format</label>
+          <select id="format">
+            <option value=".m4b">.m4b (with chapters)</option>
+            <option value=".mp3">.mp3</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Title (optional)</label><input id="title" placeholder="from filename"></div>
+        <div><label>Author (optional)</label><input id="author"></div>
+      </div>
+
+      <button type="submit" id="go">Create audiobook</button>
+    </form>
+
+    <div class="progress" id="progress">
+      <div class="stage"><span id="stageName">Starting…</span><span id="pct">0%</span></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="badge" id="resultMeta"></div>
+      <a class="dl" id="dlFull" href="#">⬇️ Full audiobook</a>
+      <a class="dl" id="dlChapters" href="#">⬇️ Chapters (zip)</a>
+      <a class="dl" id="dlPdf" href="#" style="display:none">⬇️ Text PDF (OCR)</a>
+    </div>
+
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Populate the voice dropdown from real Edge-TTS data.
+async function loadVoices() {
+  try {
+    const vs = await (await fetch("/voices")).json();
+    const sel = $("voice"); sel.innerHTML = "";
+    for (const v of vs) {
+      const o = document.createElement("option");
+      o.value = v.id;
+      const p = v.personalities.length ? ` — ${v.personalities.join(", ")}` : "";
+      o.textContent = `${v.id} (${v.gender})${p}`;
+      if (v.id === "en-US-AndrewNeural") o.selected = true;
+      sel.appendChild(o);
+    }
+  } catch (e) { $("voice").innerHTML = "<option>Failed to load voices</option>"; }
+}
+loadVoices();
+
+let pollTimer = null;
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("err").style.display = "none";
+  $("results").style.display = "none";
+  if (!$("pdf").files[0]) return;
+
+  const fd = new FormData();
+  fd.append("pdf", $("pdf").files[0]);
+  fd.append("voice", $("voice").value);
+  fd.append("rate", $("rate").value);
+  fd.append("title", $("title").value);
+  fd.append("author", $("author").value);
+  fd.append("full_format", $("format").value);
+
+  $("go").disabled = true;
+  $("progress").style.display = "block";
+  setProgress("uploading", 0);
+
+  try {
+    const res = await fetch("/convert", { method: "POST", body: fd });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const { job_id } = await res.json();
+    poll(job_id);
+  } catch (e) { showError(e.message); }
+});
+
+function poll(jobId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    let j;
+    try { j = await (await fetch(`/jobs/${jobId}`)).json(); }
+    catch { return; }
+    setProgress(j.stage || j.status, j.progress || 0);
+    if (j.status === "done") { clearInterval(pollTimer); showResults(jobId, j); }
+    else if (j.status === "error") { clearInterval(pollTimer); showError(j.error); }
+  }, 1500);
+}
+
+function setProgress(stage, frac) {
+  $("stageName").textContent = prettyStage(stage);
+  const pct = Math.round(frac * 100);
+  $("pct").textContent = pct + "%";
+  $("fill").style.width = pct + "%";
+}
+function prettyStage(s) {
+  return ({uploading:"Uploading", extract:"Extracting text", chapters:"Detecting chapters",
+           tts:"Synthesizing speech", stitch:"Stitching audio", textpdf:"Writing text PDF",
+           done:"Done", queued:"Queued", running:"Working"})[s] || s;
+}
+
+function showResults(jobId, j) {
+  setProgress("done", 1);
+  $("go").disabled = false;
+  $("results").style.display = "block";
+  $("resultMeta").textContent = `"${j.title}" — ${j.chapters.length} chapters`;
+  $("dlFull").href = `/jobs/${jobId}/full`;
+  $("dlChapters").href = `/jobs/${jobId}/chapters.zip`;
+  const pdf = $("dlPdf");
+  if (j.has_text_pdf) { pdf.style.display = "block"; pdf.href = `/jobs/${jobId}/textpdf`; }
+  else pdf.style.display = "none";
+}
+
+function showError(msg) {
+  clearInterval(pollTimer);
+  $("go").disabled = false;
+  $("progress").style.display = "none";
+  const el = $("err"); el.style.display = "block"; el.textContent = "⚠️ " + msg;
+}
+</script>
+</body>
+</html>

@@ -62,9 +62,18 @@ data: extract → clean → synthesize (TTS) → stitch → orchestrate.
   or `.m4b` (AAC re-encode), format from the output extension. Metadata +
   optional `chapters=` seam (real boundaries come at M5). Needs the FFmpeg
   binary (`brew install ffmpeg`).
-- ✅ `pipeline.py` — Stage 5, done. One command PDF→audiobook wiring 1→2→3→4 via
-  `PipelineConfig`; `--resume` (filesystem-as-checkpoint), fail-loud on any
-  failed chunk. **Pipeline is complete end-to-end.**
+- ✅ `pipeline.py` — Stage 5, done. Orchestrates 1→2→3→4 via `PipelineConfig`;
+  segments pages into chapters, cleans+chunks each, then emits an output dir:
+  `full/<title>.m4b` (with chapter marks), `chapters/NN_Title.mp3`, and a
+  `<title>_text.pdf` when OCR was used. `--resume`, fail-loud on failed chunks,
+  `progress(stage, frac)` hook for the web UI.
+- ✅ `chapters.py` — chapter detection: embedded TOC first (`doc.get_toc()`),
+  heading heuristics fallback; groups pages into chapter segments.
+- ✅ `textpdf.py` — renders extracted text into a paginated PDF (PyMuPDF Story).
+  Pipeline emits it only when OCR ran (scanned books).
+- ✅ `app.py` + `index.html` — FastAPI web app. Async job model (upload →
+  background job → poll → download), `/voices` dropdown from Edge-TTS, per-chunk
+  progress. **Full local website works end-to-end.**
 
 Note: fixed a latent bug in `cleaner.py` — `reflow_paragraphs` used a raw NUL
 byte as its paragraph sentinel, which is illegal in Python source and made the
@@ -75,11 +84,13 @@ Now `"\x00"` as an escape; behavior identical.
 
 Edge-TTS needs a venv (Homebrew Python is externally-managed, PEP 668):
 
-    python3 -m venv .venv && ./.venv/bin/pip install edge-tts pymupdf
-    # one command, whole pipeline:
-    ./.venv/bin/python pipeline.py book.pdf book.m4b --title "..." --author "..."
-    ./.venv/bin/python pipeline.py book.pdf book.m4b --resume    # after a crash
-    # stages are still independently runnable (tts.py / stitch.py have __main__).
+    python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+    # web app (local): open http://localhost:8000
+    ./.venv/bin/uvicorn app:app --port 8000
+    # or the CLI (out is now a DIRECTORY): full/ chapters/ + text pdf
+    ./.venv/bin/python pipeline.py book.pdf out_dir/ --title "..." --author "..."
+    ./.venv/bin/python pipeline.py book.pdf out_dir/ --resume    # after a crash
+    # stages still independently runnable (tts.py / stitch.py / chapters.py / textpdf.py).
 
 Note: on this machine `pip` and `python3` resolve to different interpreters —
 always drive the pipeline through `./.venv/bin/python`. Also needs the FFmpeg

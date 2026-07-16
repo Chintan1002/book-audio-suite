@@ -267,12 +267,15 @@ async def synthesize_book(
     timeout: float = CHUNK_TIMEOUT_S,
     retries: int = MAX_RETRIES,
     skip_existing: bool = False,
+    on_done: Callable[[AudioChunk], None] | None = None,
 ) -> list[AudioChunk]:
     """
     Synthesize all chunks concurrently (capped) into out_dir, returning results
     sorted by index. Pass `voice=` for the default Edge-TTS engine, or a custom
     `engine=` (e.g. a future Kokoro/Piper engine) to bypass Edge-TTS entirely.
     With `skip_existing=True`, chunks already on disk are kept (resume).
+    `on_done` (if given) is called with each AudioChunk as it finishes — handy
+    for driving a progress bar, since chunks complete out of order.
 
     The chunk *text* is materialized to schedule tasks — cheap (a whole book of
     text is a few MB). Audio never all lives in memory; each chunk streams
@@ -291,7 +294,12 @@ async def synthesize_book(
         )
         for c in chunks
     ]
-    results = await asyncio.gather(*tasks)
+    results: list[AudioChunk] = []
+    for fut in asyncio.as_completed(tasks):
+        r = await fut
+        results.append(r)
+        if on_done is not None:
+            on_done(r)
     return sorted(results, key=lambda a: a.index)
 
 
