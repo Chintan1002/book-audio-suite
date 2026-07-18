@@ -11,15 +11,29 @@
     --fg:#eef1f7; --muted:#98a2b7; --field:#0e1119;
     --a1:#8b7bff; --a2:#4aa8ff; --ok:#34d399; --err:#fb7185;
     --grad:linear-gradient(135deg,var(--a1),var(--a2));
+    --glow1:rgba(139,123,255,.18); --glow2:rgba(74,168,255,.16);
+    --title:linear-gradient(90deg,#fff,#c9d4ff);
+    --file-btn:rgba(255,255,255,.08); --file-btn-h:rgba(255,255,255,.14);
   }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg:#f3f5fb; --card:rgba(255,255,255,.78); --line:rgba(12,22,44,.12);
+    --fg:#141824; --muted:#5b6474; --field:#ffffff;
+    --a1:#6f5cf0; --a2:#2f8fee; --ok:#059669; --err:#e11d48;
+    --glow1:rgba(139,123,255,.20); --glow2:rgba(74,168,255,.18);
+    --title:linear-gradient(90deg,#141824,#4a4fce);
+    --file-btn:rgba(12,22,44,.06); --file-btn-h:rgba(12,22,44,.12);
+  }
+  html { transition:background-color .25s; }
   * { box-sizing:border-box; }
   html,body { min-height:100%; }
   body {
     margin:0; color:var(--fg); background:var(--bg);
     background-image:
-      radial-gradient(60rem 40rem at 15% -10%, rgba(139,123,255,.18), transparent 60%),
-      radial-gradient(50rem 40rem at 110% 10%, rgba(74,168,255,.16), transparent 55%);
+      radial-gradient(60rem 40rem at 15% -10%, var(--glow1), transparent 60%),
+      radial-gradient(50rem 40rem at 110% 10%, var(--glow2), transparent 55%);
     background-attachment:fixed;
+    transition:background-color .25s, color .25s;
     font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
@@ -27,6 +41,14 @@
 
   /* Hero */
   .brand { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .theme-toggle {
+    margin-left:auto; width:40px; height:40px; border-radius:11px; font-size:18px;
+    display:grid; place-items:center; cursor:pointer; color:var(--fg);
+    background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px);
+    transition:transform .06s, border-color .15s, background .15s;
+  }
+  .theme-toggle:hover { border-color:var(--a2); }
+  .theme-toggle:active { transform:translateY(1px); }
   .logo {
     width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
     font-size:22px; background:var(--grad);
@@ -34,7 +56,7 @@
   }
   h1 {
     font-size:27px; letter-spacing:-.02em; margin:0; font-weight:700;
-    background:linear-gradient(90deg,#fff,#c9d4ff);
+    background:var(--title);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   .sub { color:var(--muted); margin:2px 0 26px; font-size:15px; }
@@ -64,9 +86,9 @@
   input[type=file] { padding:9px; color:var(--muted); cursor:pointer; }
   input[type=file]::file-selector-button {
     margin-right:12px; padding:8px 14px; border:0; border-radius:8px; cursor:pointer;
-    background:rgba(255,255,255,.08); color:var(--fg); font-weight:600; font-size:13px;
+    background:var(--file-btn); color:var(--fg); font-weight:600; font-size:13px;
   }
-  input[type=file]::file-selector-button:hover { background:rgba(255,255,255,.14); }
+  input[type=file]::file-selector-button:hover { background:var(--file-btn-h); }
 
   .row { display:flex; gap:14px; } .row > div { flex:1; }
   .voicerow { display:flex; gap:10px; align-items:stretch; }
@@ -126,6 +148,7 @@
   <div class="brand">
     <div class="logo">🎧</div>
     <h1>Audiobook Creator</h1>
+    <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
   </div>
   <p class="sub">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
 
@@ -196,6 +219,18 @@
 
 <script>
 const $ = id => document.getElementById(id);
+
+// --- Light / dark theme, persisted across visits.
+const root = document.documentElement;
+function applyTheme(t) {
+  root.setAttribute("data-theme", t);
+  localStorage.setItem("theme", t);
+  $("themeToggle").textContent = t === "light" ? "☀️" : "🌙";
+}
+applyTheme(localStorage.getItem("theme")
+  || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+$("themeToggle").addEventListener("click", () =>
+  applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light"));
 
 // Populate the voice dropdown from real Edge-TTS data.
 async function loadVoices() {
