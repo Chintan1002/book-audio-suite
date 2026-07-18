@@ -21,6 +21,7 @@ Run:  ./.venv/bin/uvicorn app:app --reload    then open http://localhost:8000
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import shutil
 import uuid
@@ -34,11 +35,23 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 from pipeline import PipelineConfig, run_pipeline
-from tts import DEFAULT_VOICE
+from tts import DEFAULT_VOICE, make_edge_engine
 
 APP_DIR = Path(__file__).parent
 JOBS_DIR = APP_DIR / "jobs"
 JOBS_DIR.mkdir(exist_ok=True)
+
+# Cache for voice-preview clips, keyed by (voice, rate). Repeat previews are
+# then instant instead of re-hitting Edge-TTS.
+SAMPLE_DIR = APP_DIR / "voice_samples_cache"
+SAMPLE_DIR.mkdir(exist_ok=True)
+
+# The one line spoken for every voice preview. Chosen to show off comma pauses,
+# a dash, and a little warmth — the qualities people audition voices for.
+SAMPLE_TEXT = (
+    "Hello, this is a preview of my voice. I can read your book aloud, "
+    "chapter by chapter — clearly, and with a little warmth."
+)
 
 app = FastAPI(title="Audiobook Creator")
 
@@ -109,6 +122,23 @@ async def voices() -> list[dict]:
         out.sort(key=lambda x: x["id"])
         _voices_cache = out
     return _voices_cache
+
+
+@app.get("/sample")
+async def sample(voice: str = DEFAULT_VOICE, rate: str = "") -> FileResponse:
+    """Synthesize (or serve cached) the preview line for a voice + narration
+    speed. Honors the same `rate` the conversion will use, so the preview
+    matches what you'll actually get."""
+    key = hashlib.md5(f"{voice}|{rate}|{SAMPLE_TEXT}".encode()).hexdigest()[:16]
+    path = SAMPLE_DIR / f"{key}.mp3"
+    if not path.exists() or path.stat().st_size == 0:
+        engine = make_edge_engine(voice, rate=rate or None)
+        try:
+            await engine(SAMPLE_TEXT, path)          # ~1s network call
+        except Exception as e:
+            path.unlink(missing_ok=True)
+            raise HTTPException(400, f"Could not synthesize preview: {e}")
+    return FileResponse(path, media_type="audio/mpeg")
 
 
 @app.post("/convert")

@@ -16,6 +16,7 @@ audio_out/
 
 # Web app runtime
 jobs/
+voice_samples_cache/
 *.log
 
 # Local Claude Code settings (keep launch.json, ignore machine-local)

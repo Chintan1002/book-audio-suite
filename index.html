@@ -20,6 +20,15 @@
           border:1px solid var(--line); border-radius:8px; font-size:14px; }
   input[type=file] { padding:8px; }
   .row { display:flex; gap:12px; } .row > div { flex:1; }
+  .hint { color:var(--muted); font-size:12px; text-transform:none; }
+  .voicerow { display:flex; gap:10px; align-items:stretch; }
+  .voicerow select { flex:1; }
+  .preview-btn { flex:0 0 auto; margin:0; width:auto; padding:0 16px; font-size:14px;
+        background:transparent; color:var(--accent); border:1px solid var(--accent);
+        border-radius:8px; cursor:pointer; white-space:nowrap; }
+  .preview-btn:disabled { opacity:.6; cursor:default; }
+  audio { width:100%; margin-top:10px; display:none; }
+  audio.show { display:block; }
   button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:8px;
            background:var(--accent); color:#08122a; font-weight:600; font-size:15px;
            cursor:pointer; }
@@ -50,8 +59,12 @@
       <label>PDF file</label>
       <input type="file" id="pdf" accept="application/pdf" required>
 
-      <label>Voice</label>
-      <select id="voice"><option>Loading voices…</option></select>
+      <label>Voice <span class="hint">— pick one, then Preview to hear it</span></label>
+      <div class="voicerow">
+        <select id="voice"><option>Loading voices…</option></select>
+        <button type="button" id="preview" class="preview-btn">▶ Preview</button>
+      </div>
+      <audio id="sampleAudio" preload="none" controls></audio>
 
       <div class="row">
         <div>
@@ -116,6 +129,26 @@ async function loadVoices() {
   } catch (e) { $("voice").innerHTML = "<option>Failed to load voices</option>"; }
 }
 loadVoices();
+
+// --- Voice preview: play the sample line at the currently-selected voice+speed.
+const previewAudio = $("sampleAudio");
+previewAudio.addEventListener("playing", () => setPreviewBtn(false));
+previewAudio.addEventListener("error", () => { setPreviewBtn(false); });
+
+$("preview").addEventListener("click", () => {
+  setPreviewBtn(true);
+  const voice = $("voice").value;
+  const rate = $("rate").value;   // read at click time -> preview honors speed
+  previewAudio.classList.add("show");
+  previewAudio.src = `/sample?voice=${encodeURIComponent(voice)}&rate=${encodeURIComponent(rate)}`;
+  previewAudio.play().catch(() => setPreviewBtn(false));
+});
+
+function setPreviewBtn(loading) {
+  const b = $("preview");
+  b.disabled = loading;
+  b.textContent = loading ? "…loading" : "▶ Preview";
+}
 
 let pollTimer = null;
 
