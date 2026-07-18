@@ -66,7 +66,7 @@ class PipelineConfig:
     concurrency: int = DEFAULT_CONCURRENCY
     title: str | None = None            # defaults to the PDF stem
     author: str | None = None
-    full_format: str = ".m4b"           # whole-book file (.m4b keeps chapter marks)
+    full_format: str = ".mp3"           # whole-book file (.mp3 = universal; .m4b keeps chapter marks)
     resume: bool = False
     keep_chunks: bool = False
     progress: ProgressFn | None = None   # (stage, fraction 0..1)
@@ -254,8 +254,8 @@ def main() -> None:
     ap.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     ap.add_argument("--title")
     ap.add_argument("--author")
-    ap.add_argument("--full-format", default=".m4b", choices=[".m4b", ".mp3"],
-                    help="whole-book file format (default .m4b, keeps chapter marks)")
+    ap.add_argument("--full-format", default=".mp3", choices=[".m4b", ".mp3"],
+                    help="whole-book file format (default .mp3, universal; .m4b keeps chapter marks)")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--keep-chunks", action="store_true")
     args = ap.parse_args()

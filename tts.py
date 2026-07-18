@@ -41,9 +41,10 @@ from typing import Awaitable, Callable, Iterable, Iterator
 # huge or slow to synthesize. ~3k chars is a few paragraphs of prose.
 MAX_CHUNK_CHARS = 3000
 
-# Edge-TTS default voice. Override per-call via `voice=` (list all voices with
+# Edge-TTS default voice. Andrew is a warm, expressive conversational voice —
+# a good neutral default. Override per-call via `voice=` (list all with
 # `edge-tts --list-voices`).
-DEFAULT_VOICE = "en-US-GuyNeural"
+DEFAULT_VOICE = "en-US-AndrewNeural"
 
 # How many chunks may be in flight at once. Edge-TTS is network + rate-limited;
 # fire too many and Microsoft's servers throttle or 403. 4 is a safe start.

@@ -5,54 +5,129 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audiobook Creator</title>
 <style>
-  :root { color-scheme: dark; --bg:#0f1115; --card:#181b22; --line:#2a2f3a;
-          --fg:#e7e9ee; --muted:#9aa3b2; --accent:#6ea8fe; --ok:#4ade80; --err:#f87171; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-         font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-  .wrap { max-width:640px; margin:0 auto; padding:32px 20px 64px; }
-  h1 { font-size:24px; margin:0 0 4px; }
-  .sub { color:var(--muted); margin:0 0 24px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
-          padding:20px; }
-  label { display:block; font-size:13px; color:var(--muted); margin:14px 0 5px; }
-  input, select { width:100%; padding:10px 12px; background:#0f1218; color:var(--fg);
-          border:1px solid var(--line); border-radius:8px; font-size:14px; }
-  input[type=file] { padding:8px; }
-  .row { display:flex; gap:12px; } .row > div { flex:1; }
-  .hint { color:var(--muted); font-size:12px; text-transform:none; }
+  :root {
+    color-scheme: dark;
+    --bg:#0b0d12; --card:rgba(255,255,255,.035); --line:rgba(255,255,255,.09);
+    --fg:#eef1f7; --muted:#98a2b7; --field:#0e1119;
+    --a1:#8b7bff; --a2:#4aa8ff; --ok:#34d399; --err:#fb7185;
+    --grad:linear-gradient(135deg,var(--a1),var(--a2));
+  }
+  * { box-sizing:border-box; }
+  html,body { min-height:100%; }
+  body {
+    margin:0; color:var(--fg); background:var(--bg);
+    background-image:
+      radial-gradient(60rem 40rem at 15% -10%, rgba(139,123,255,.18), transparent 60%),
+      radial-gradient(50rem 40rem at 110% 10%, rgba(74,168,255,.16), transparent 55%);
+    background-attachment:fixed;
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:600px; margin:0 auto; padding:56px 20px 72px; }
+
+  /* Hero */
+  .brand { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .logo {
+    width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+    font-size:22px; background:var(--grad);
+    box-shadow:0 8px 24px rgba(74,168,255,.35);
+  }
+  h1 {
+    font-size:27px; letter-spacing:-.02em; margin:0; font-weight:700;
+    background:linear-gradient(90deg,#fff,#c9d4ff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub { color:var(--muted); margin:2px 0 26px; font-size:15px; }
+
+  /* Card */
+  .card {
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:24px; backdrop-filter:blur(12px);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+
+  label { display:block; font-size:12px; font-weight:600; letter-spacing:.04em;
+          text-transform:uppercase; color:var(--muted); margin:16px 0 7px; }
+  label:first-of-type { margin-top:0; }
+  .hint { font-weight:400; letter-spacing:0; text-transform:none; color:var(--muted); opacity:.8; }
+
+  input, select {
+    width:100%; padding:11px 13px; color:var(--fg); background:var(--field);
+    border:1px solid var(--line); border-radius:11px; font-size:14px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+    appearance:none;
+  }
+  select { background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2398a2b7' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 13px center; padding-right:34px; }
+  input:focus, select:focus { border-color:var(--a2); box-shadow:0 0 0 3px rgba(74,168,255,.18); }
+  input[type=file] { padding:9px; color:var(--muted); cursor:pointer; }
+  input[type=file]::file-selector-button {
+    margin-right:12px; padding:8px 14px; border:0; border-radius:8px; cursor:pointer;
+    background:rgba(255,255,255,.08); color:var(--fg); font-weight:600; font-size:13px;
+  }
+  input[type=file]::file-selector-button:hover { background:rgba(255,255,255,.14); }
+
+  .row { display:flex; gap:14px; } .row > div { flex:1; }
   .voicerow { display:flex; gap:10px; align-items:stretch; }
   .voicerow select { flex:1; }
-  .preview-btn { flex:0 0 auto; margin:0; width:auto; padding:0 16px; font-size:14px;
-        background:transparent; color:var(--accent); border:1px solid var(--accent);
-        border-radius:8px; cursor:pointer; white-space:nowrap; }
+  .preview-btn {
+    flex:0 0 auto; padding:0 16px; font-size:13px; font-weight:600; white-space:nowrap;
+    background:rgba(139,123,255,.12); color:#cfc8ff; border:1px solid rgba(139,123,255,.45);
+    border-radius:11px; cursor:pointer; transition:background .15s, transform .05s;
+  }
+  .preview-btn:hover:not(:disabled) { background:rgba(139,123,255,.22); }
+  .preview-btn:active { transform:translateY(1px); }
   .preview-btn:disabled { opacity:.6; cursor:default; }
-  audio { width:100%; margin-top:10px; display:none; }
+  audio { width:100%; margin-top:12px; display:none; border-radius:11px; }
   audio.show { display:block; }
-  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:8px;
-           background:var(--accent); color:#08122a; font-weight:600; font-size:15px;
-           cursor:pointer; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  .progress { margin-top:22px; display:none; }
-  .bar { height:10px; background:#0f1218; border:1px solid var(--line);
-         border-radius:99px; overflow:hidden; }
-  .fill { height:100%; width:0%; background:var(--accent); transition:width .4s ease; }
-  .stage { display:flex; justify-content:space-between; font-size:13px;
-           color:var(--muted); margin-bottom:8px; }
-  .results { margin-top:22px; display:none; }
-  .dl { display:block; padding:12px 14px; margin-top:10px; background:#0f1218;
-        border:1px solid var(--line); border-radius:8px; color:var(--fg);
-        text-decoration:none; }
-  .dl:hover { border-color:var(--accent); }
-  .dl small { color:var(--muted); }
-  .err { color:var(--err); margin-top:16px; display:none; white-space:pre-wrap; }
-  .badge { color:var(--muted); font-size:12px; }
+
+  .go {
+    margin-top:26px; width:100%; padding:14px; border:0; border-radius:12px;
+    font-size:15px; font-weight:700; letter-spacing:.01em; cursor:pointer; color:#0a0f1e;
+    background:var(--grad); box-shadow:0 12px 30px -8px rgba(74,168,255,.5);
+    transition:transform .06s, box-shadow .2s, filter .2s;
+  }
+  .go:hover:not(:disabled) { filter:brightness(1.06); box-shadow:0 16px 40px -8px rgba(74,168,255,.6); }
+  .go:active { transform:translateY(1px); }
+  .go:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+
+  /* Progress */
+  .progress { margin-top:24px; display:none; }
+  .stage { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:9px; }
+  .stage b { color:var(--fg); font-weight:600; }
+  .bar { height:9px; background:var(--field); border:1px solid var(--line); border-radius:99px; overflow:hidden; }
+  .fill { height:100%; width:0%; border-radius:99px; background:var(--grad);
+          background-size:200% 100%; animation:flow 2s linear infinite; transition:width .5s ease; }
+  @keyframes flow { to { background-position:200% 0; } }
+
+  /* Results */
+  .results { margin-top:24px; display:none; }
+  .results h3 { margin:0 0 3px; font-size:15px; }
+  .meta { color:var(--muted); font-size:13px; margin-bottom:14px; }
+  .dl {
+    display:flex; align-items:center; gap:12px; padding:14px; margin-top:10px;
+    background:var(--field); border:1px solid var(--line); border-radius:12px;
+    color:var(--fg); text-decoration:none; transition:border-color .15s, transform .06s, background .15s;
+  }
+  .dl:hover { border-color:var(--a2); background:rgba(74,168,255,.06); transform:translateY(-1px); }
+  .dl .ico { font-size:20px; }
+  .dl .t { font-weight:600; } .dl .d { color:var(--muted); font-size:12px; }
+  .dl .arrow { margin-left:auto; color:var(--muted); }
+
+  .err { color:var(--err); margin-top:18px; display:none; white-space:pre-wrap; font-size:14px;
+         background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.3);
+         padding:12px 14px; border-radius:11px; }
+  .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:22px; opacity:.75; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>📖→🎧 Audiobook Creator</h1>
-  <p class="sub">Upload a PDF, pick a voice, get a chaptered audiobook.</p>
+  <div class="brand">
+    <div class="logo">🎧</div>
+    <h1>Audiobook Creator</h1>
+  </div>
+  <p class="sub">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
 
   <div class="card">
     <form id="form">
@@ -80,34 +155,43 @@
         <div>
           <label>Full-book format</label>
           <select id="format">
-            <option value=".m4b">.m4b (with chapters)</option>
-            <option value=".mp3">.mp3</option>
+            <option value=".mp3" selected>MP3 — plays anywhere</option>
+            <option value=".m4b">M4B — chapters &amp; bookmarks</option>
           </select>
         </div>
       </div>
 
       <div class="row">
-        <div><label>Title (optional)</label><input id="title" placeholder="from filename"></div>
-        <div><label>Author (optional)</label><input id="author"></div>
+        <div><label>Title <span class="hint">(optional)</span></label><input id="title" placeholder="from filename"></div>
+        <div><label>Author <span class="hint">(optional)</span></label><input id="author"></div>
       </div>
 
-      <button type="submit" id="go">Create audiobook</button>
+      <button type="submit" id="go" class="go">✨ Create audiobook</button>
     </form>
 
     <div class="progress" id="progress">
-      <div class="stage"><span id="stageName">Starting…</span><span id="pct">0%</span></div>
+      <div class="stage"><b id="stageName">Starting…</b><span id="pct">0%</span></div>
       <div class="bar"><div class="fill" id="fill"></div></div>
     </div>
 
     <div class="results" id="results">
-      <div class="badge" id="resultMeta"></div>
-      <a class="dl" id="dlFull" href="#">⬇️ Full audiobook</a>
-      <a class="dl" id="dlChapters" href="#">⬇️ Chapters (zip)</a>
-      <a class="dl" id="dlPdf" href="#" style="display:none">⬇️ Text PDF (OCR)</a>
+      <h3>🎉 Your audiobook is ready</h3>
+      <div class="meta" id="resultMeta"></div>
+      <a class="dl" id="dlFull" href="#">
+        <span class="ico">🎧</span><span><div class="t">Full audiobook</div><div class="d">the whole book in one file</div></span><span class="arrow">↓</span>
+      </a>
+      <a class="dl" id="dlChapters" href="#">
+        <span class="ico">📚</span><span><div class="t">Chapters (zip)</div><div class="d">one mp3 per chapter</div></span><span class="arrow">↓</span>
+      </a>
+      <a class="dl" id="dlPdf" href="#" style="display:none">
+        <span class="ico">📄</span><span><div class="t">Text PDF</div><div class="d">searchable text from OCR</div></span><span class="arrow">↓</span>
+      </a>
     </div>
 
     <div class="err" id="err"></div>
   </div>
+
+  <p class="foot">Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text</p>
 </div>
 
 <script>
@@ -206,11 +290,11 @@ function showResults(jobId, j) {
   setProgress("done", 1);
   $("go").disabled = false;
   $("results").style.display = "block";
-  $("resultMeta").textContent = `"${j.title}" — ${j.chapters.length} chapters`;
+  $("resultMeta").textContent = `"${j.title}" — ${j.chapters.length} chapter${j.chapters.length===1?"":"s"}`;
   $("dlFull").href = `/jobs/${jobId}/full`;
   $("dlChapters").href = `/jobs/${jobId}/chapters.zip`;
   const pdf = $("dlPdf");
-  if (j.has_text_pdf) { pdf.style.display = "block"; pdf.href = `/jobs/${jobId}/textpdf`; }
+  if (j.has_text_pdf) { pdf.style.display = "flex"; pdf.href = `/jobs/${jobId}/textpdf`; }
   else pdf.style.display = "none";
 }
 

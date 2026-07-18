@@ -148,7 +148,7 @@ async def convert(
     rate: str = Form(""),
     title: str = Form(""),
     author: str = Form(""),
-    full_format: str = Form(".m4b"),
+    full_format: str = Form(".mp3"),
 ) -> dict:
     if not (pdf.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Please upload a .pdf file.")
