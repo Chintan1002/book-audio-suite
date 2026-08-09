@@ -1,7 +1,11 @@
-# CLAUDE.md — PDF → Audiobook
+# CLAUDE.md — Book/Audio Suite
 
 Context for Claude Code working in this repo. Read `PROJECT_PLAN.md` for the
 full module map and current status.
+
+> ⚠️ **Two features planned — see `TODO_PLAN.md`.** Feature A (TTS, PDF →
+> audiobook) is built and in a quality pass. Feature B (**STT, audio → text**)
+> is **not started** — remind Chintan to pick it up next session.
 
 ## What this project is
 
