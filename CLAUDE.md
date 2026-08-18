@@ -100,6 +100,27 @@ Edge-TTS needs a venv (Homebrew Python is externally-managed, PEP 668):
     ./.venv/bin/python pipeline.py book.pdf out_dir/ --resume    # after a crash
     # stages still independently runnable (tts.py / stitch.py / chapters.py / textpdf.py).
 
+## Running with a database (optional)
+
+Without `DATABASE_URL` the app runs entirely in memory exactly as before — no
+database needed for local work or tests. Set it and jobs survive restarts and
+transcripts become real per-user rows:
+
+    brew install postgresql@16
+    export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+    export LC_ALL=C                 # macOS: postgres won't start without this
+    initdb -D pgdata -U postgres --auth=trust
+    pg_ctl -D pgdata -o "-p 55432 -k /tmp" -l pgdata/server.log start
+    createdb -h /tmp -p 55432 -U postgres bookaudio
+    psql -h /tmp -p 55432 -U postgres -d bookaudio -f db/schema.sql
+
+    export DATABASE_URL="postgresql://postgres@/bookaudio?host=/tmp&port=55432"
+    ./.venv/bin/python -m uvicorn app:app --port 8000
+
+The same `db/schema.sql` applies unchanged to Supabase (paste it into the SQL
+editor). Only STT persists content — a finished transcription writes a
+transcript row; TTS saves nothing. See `PRD_MULTIUSER.md`.
+
 Note: on this machine `pip` and `python3` resolve to different interpreters —
 always drive the pipeline through `./.venv/bin/python`. Also needs the FFmpeg
 binary on PATH (`brew install ffmpeg`).

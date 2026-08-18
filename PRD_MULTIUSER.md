@@ -169,9 +169,12 @@ retires D-5's blanket retention in favour of `prune_stale_jobs()`.
 
 ## 8. Milestones
 
-1. **M1 — Repository seam.** Introduce the interface; move jobs off the
-   in-memory dict. Still single-user, no auth. Fixes restart loss.
-2. **M2 — Schema + Postgres.** Apply `db/schema.sql`; `PostgresRepository`.
+1. ✅ **M1 — Repository seam.** Interface introduced; jobs moved off the
+   in-memory dict. Still single-user, no auth.
+2. ✅ **M2 — Schema + Postgres.** `db/schema.sql` applied and verified against
+   Postgres 16; `PostgresRepository` implemented. Jobs now survive a restart
+   (this is what actually closes D-3). Selected by `DATABASE_URL`; unset it and
+   the app still runs fully in memory.
 3. **M3 — Auth.** Supabase Auth, sign-in UI, `user_id` on every write, RLS
    verified by an actual cross-user attempt.
 4. **M4 — Library tab.** List, search, view, delete.

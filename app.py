@@ -36,6 +36,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
+import os
 import shutil
 import threading
 import uuid
@@ -86,15 +87,34 @@ app = FastAPI(title="Book/Audio Suite")
 _executor = ThreadPoolExecutor(max_workers=2)
 _voices_cache: list[dict] | None = None
 
-# All job/transcript persistence goes through this seam. MemoryRepository keeps
-# today's behaviour (process-local, lost on restart); swapping in
-# PostgresRepository at M2 is a one-line change here and nowhere else.
-repo: Repository = MemoryRepository()
+# All job/transcript persistence goes through this seam. Set DATABASE_URL to
+# run against Postgres/Supabase (jobs survive restarts, transcripts become real
+# per-user rows); leave it unset and the app runs exactly as before, entirely in
+# memory, with no database required for local work or tests.
+def _make_repository() -> Repository:
+    dsn = os.environ.get("DATABASE_URL", "").strip()
+    if not dsn:
+        return MemoryRepository()
+    try:
+        from db.repository import PostgresRepository
+        return PostgresRepository(dsn)
+    except Exception as e:
+        # A database that is configured but unreachable is worth shouting about;
+        # silently degrading to memory would look like data loss later.
+        raise RuntimeError(
+            f"DATABASE_URL is set but the database could not be opened: {e}"
+        ) from e
+
+
+repo: Repository = _make_repository()
 
 # Placeholder owner until real auth lands (M3). Every call already passes a
 # user_id, so adding accounts becomes a matter of resolving this per request
 # rather than threading a new argument through the whole app.
-CURRENT_USER = "local"
+#
+# It is a real UUID because the schema types user_id as uuid referencing
+# auth.users; DEV_USER_ID lets you point local work at a specific account.
+CURRENT_USER = os.environ.get("DEV_USER_ID", "00000000-0000-0000-0000-000000000001")
 
 # The faster-whisper model is the expensive thing to load, so ONE Transcriber is
 # created and reused for every request. `_stt_model_lock` guards construction;
@@ -233,9 +253,25 @@ def _run_stt_job(job_id: str, audio_path: Path, out_dir: Path,
 def _on_startup() -> None:
     """A job left 'queued'/'running' by a crash can never finish, so mark it
     errored rather than letting the UI poll it forever."""
+    # Single-user dev mode against Postgres: the placeholder owner must exist
+    # before anything can reference it. Removed at M3, when real sign-in
+    # supplies genuine auth.users rows.
+    ensure_dev_user = getattr(repo, "ensure_dev_user", None)
+    if ensure_dev_user is not None:
+        ensure_dev_user(CURRENT_USER)
+
     stranded = repo.fail_interrupted_jobs()
     if stranded:
         print(f"[startup] marked {stranded} interrupted job(s) as failed")
+
+
+@app.on_event("shutdown")
+def _on_shutdown() -> None:
+    """Release the connection pool deliberately; leaving it to the garbage
+    collector produces noise at interpreter shutdown."""
+    close = getattr(repo, "close", None)
+    if close is not None:
+        close()
 
 
 # --- Routes ------------------------------------------------------------------

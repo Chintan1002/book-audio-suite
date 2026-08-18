@@ -11,6 +11,10 @@ fastapi>=0.110       # web API
 uvicorn[standard]>=0.29   # ASGI server
 python-multipart>=0.0.9   # file uploads for FastAPI
 
+# Multi-user persistence (optional). Without DATABASE_URL the app runs fully
+# in memory and needs none of this.
+psycopg[binary,pool]>=3.1   # Postgres / Supabase driver + connection pool
+
 # Feature B (Speech-to-Text) has its own, heavier deps — kept separate so the
 # TTS path stays light:  pip install -r requirements_stt.txt
 
