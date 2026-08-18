@@ -3,8 +3,16 @@
   "configurations": [
     {
       "name": "audiobook",
-      "runtimeExecutable": "./.venv/bin/uvicorn",
-      "runtimeArgs": ["app:app", "--port", "8000"],
+      "runtimeExecutable": "/Users/chintan0206/Desktop/PROJECTS/Audio Book Creator/.venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app:app",
+        "--port",
+        "8000",
+        "--app-dir",
+        "/Users/chintan0206/Desktop/PROJECTS/Audio Book Creator"
+      ],
       "port": 8000
     }
   ]

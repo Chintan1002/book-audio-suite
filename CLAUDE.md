@@ -3,9 +3,13 @@
 Context for Claude Code working in this repo. Read `PROJECT_PLAN.md` for the
 full module map and current status.
 
-> ⚠️ **Two features planned — see `TODO_PLAN.md`.** Feature A (TTS, PDF →
-> audiobook) is built and in a quality pass. Feature B (**STT, audio → text**)
-> is **not started** — remind Chintan to pick it up next session.
+> **Two features, both live in the web app.** Feature A (TTS, PDF → audiobook)
+> is built and in a quality pass. **Feature B (STT, audio → text)** is now
+> **wired into the site** as a second tab: upload audio → `POST /transcribe` →
+> poll → download `.txt`/`.md`/`.json`. Spec in `PRD_STT.md`, code in `stt/`
+> (ingest, transcribe via faster-whisper, formatter, output, `pipeline`, `cli`;
+> live-mic `stream` is NOT wired up yet — that's the next STT phase).
+> Setup: `pip install -r requirements_stt.txt` + install FFmpeg.
 
 ## What this project is
 

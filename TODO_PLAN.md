@@ -1,10 +1,9 @@
 # TODO & Plan — Book/Audio Suite
 
-> ⚠️ **REMINDER FOR NEXT SESSION:** This product has **TWO features**, not one.
-> Feature A (**TTS — PDF → audiobook**) is mostly built. Feature B (**STT —
-> audio → text**) is **not started yet**. When we next sit down to work, pick up
-> Feature B (STT) — see the section below. Don't let it get forgotten behind the
-> TTS polish work.
+> ✅ **UPDATE:** Both features are now live in the web app. Feature A (**TTS —
+> PDF → audiobook**) and Feature B (**STT — audio → text**) each have their own
+> tab at `http://localhost:8000`. STT file-upload transcription is **done**;
+> what remains for Feature B is live-mic streaming (see below).
 
 ---
 
@@ -49,9 +48,30 @@ Open work:
 
 ---
 
-## Feature B — STT (Audio → Text)   ⬅ START HERE NEXT
+## Feature B — STT (Audio → Text)
 
-**Status: not started. This is the reminder.**
+**Status: file-upload transcription shipped and wired into the web app.**
+
+Done:
+- ✅ `stt/` package — ingest (FFmpeg → 16 kHz mono), transcribe (faster-whisper
+      with word timestamps), formatter, output (`.txt`/`.md`/`.json`), pipeline, CLI
+- ✅ **Web integration** — "Audio → Text" tab beside the TTS tab. `POST /transcribe`
+      creates a job in the same registry/thread-pool as TTS, `GET /jobs/{id}` polls
+      it, `GET /jobs/{id}/transcript.{txt,md,json}` downloads. Model/language
+      pickers, inline transcript preview, `GET /stt/status` for a clear message
+      when deps are missing.
+- ✅ The faster-whisper model is loaded **once** and reused across requests
+      (transcription is serialized by a lock — one WhisperModel, 2 pool workers).
+
+Open work:
+- [ ] **Live-mic streaming** (`stt/stream.py`) — WebSocket into the UI, rolling
+      partials. The one remaining piece of the PRD.
+- [ ] Real progress *during* transcription — `transcribe_file()` has no progress
+      hook, so the bar reports coarse stages (load → transcribe → write). Fix by
+      iterating faster-whisper's segment generator and reporting `segment.end /
+      duration`.
+- [ ] Optional: subtitles (`.srt`/`.vtt`) — trivial from the timestamps we already
+      emit; diarization (pyannote) is the bigger later item.
 
 Goal: take an audio file (or recording) and produce clean, readable text —
 transcripts, notes, or a text version of spoken content. The mirror image of

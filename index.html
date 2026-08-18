@@ -141,6 +141,24 @@
          background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.3);
          padding:12px 14px; border-radius:11px; }
   .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:22px; opacity:.75; }
+
+  /* Mode tabs */
+  .tabs { display:flex; gap:6px; padding:5px; margin-bottom:18px; border-radius:14px;
+          background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px); }
+  .tab { flex:1; padding:10px 12px; border:0; border-radius:10px; cursor:pointer;
+         background:transparent; color:var(--muted); font-size:14px; font-weight:600;
+         font-family:inherit; transition:background .15s, color .15s; }
+  .tab:hover { color:var(--fg); }
+  .tab.active { background:var(--grad); color:#0a0f1e;
+                box-shadow:0 8px 20px -8px rgba(74,168,255,.5); }
+  .mode { display:none; } .mode.active { display:block; }
+  .note { margin-top:14px; padding:11px 13px; border-radius:11px; font-size:13px;
+          background:rgba(139,123,255,.10); border:1px solid rgba(139,123,255,.30);
+          color:var(--fg); }
+  .note.warn { background:rgba(251,113,133,.08); border-color:rgba(251,113,133,.30); }
+  .transcript { margin-top:14px; padding:13px; max-height:230px; overflow:auto;
+                background:var(--field); border:1px solid var(--line); border-radius:11px;
+                font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -150,9 +168,14 @@
     <h1>Audiobook Creator</h1>
     <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
   </div>
-  <p class="sub">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
+  <p class="sub" id="subtitle">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
 
-  <div class="card">
+  <div class="tabs">
+    <button type="button" class="tab active" id="tabTts" data-mode="tts">📖 → 🎧 Book → Audio</button>
+    <button type="button" class="tab" id="tabStt" data-mode="stt">🎙️ → 📝 Audio → Text</button>
+  </div>
+
+  <div class="card mode active" id="modeTts">
     <form id="form">
       <label>PDF file</label>
       <input type="file" id="pdf" accept="application/pdf" required>
@@ -214,7 +237,70 @@
     <div class="err" id="err"></div>
   </div>
 
-  <p class="foot">Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text</p>
+  <div class="card mode" id="modeStt">
+    <form id="sttForm">
+      <label>Audio file <span class="hint">— mp3, wav, m4a, flac, ogg, mp4…</span></label>
+      <input type="file" id="audio" accept="audio/*,video/mp4,.m4a,.m4b,.opus,.oga" required>
+
+      <div class="row">
+        <div>
+          <label>Model <span class="hint">(accuracy vs speed)</span></label>
+          <select id="sttModel">
+            <option value="tiny">Tiny — fastest</option>
+            <option value="base" selected>Base — balanced</option>
+            <option value="small">Small — more accurate</option>
+            <option value="medium">Medium — slow, best</option>
+          </select>
+        </div>
+        <div>
+          <label>Language</label>
+          <select id="sttLang">
+            <option value="" selected>Auto-detect</option>
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ja">Japanese</option>
+            <option value="zh">Chinese</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Title <span class="hint">(optional — names the downloads)</span></label>
+      <input id="sttTitle" placeholder="from filename">
+
+      <button type="submit" id="sttGo" class="go">📝 Transcribe audio</button>
+    </form>
+
+    <div class="note warn" id="sttUnavailable" style="display:none"></div>
+
+    <div class="progress" id="sttProgress">
+      <div class="stage"><b id="sttStageName">Starting…</b><span id="sttPct">0%</span></div>
+      <div class="bar"><div class="fill" id="sttFill"></div></div>
+    </div>
+
+    <div class="results" id="sttResults">
+      <h3>📝 Your transcript is ready</h3>
+      <div class="meta" id="sttMeta"></div>
+      <div class="transcript" id="sttPreview"></div>
+      <a class="dl" id="dlTxt" href="#">
+        <span class="ico">📄</span><span><div class="t">Transcript (.txt)</div><div class="d">plain text</div></span><span class="arrow">↓</span>
+      </a>
+      <a class="dl" id="dlMd" href="#">
+        <span class="ico">📝</span><span><div class="t">Transcript (.md)</div><div class="d">markdown with details</div></span><span class="arrow">↓</span>
+      </a>
+      <a class="dl" id="dlJson" href="#">
+        <span class="ico">⏱️</span><span><div class="t">Timestamps (.json)</div><div class="d">segments + word timings</div></span><span class="arrow">↓</span>
+      </a>
+    </div>
+
+    <div class="err" id="sttErr"></div>
+  </div>
+
+  <p class="foot" id="footNote">Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text</p>
 </div>
 
 <script>
@@ -269,8 +355,72 @@ function setPreviewBtn(loading) {
   b.textContent = loading ? "…loading" : "▶ Preview";
 }
 
-let pollTimer = null;
+// --- Mode tabs: "Book -> Audio" (TTS) and "Audio -> Text" (STT).
+const SUBTITLES = {
+  tts: "Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.",
+  stt: "Turn a recording into a clean, punctuated transcript with timestamps.",
+};
+const FOOTNOTES = {
+  tts: "Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text",
+  stt: "Runs locally · transcribed on-device with faster-whisper · nothing is uploaded",
+};
 
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => switchMode(btn.dataset.mode));
+});
+
+function switchMode(mode) {
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.mode === mode));
+  $("modeTts").classList.toggle("active", mode === "tts");
+  $("modeStt").classList.toggle("active", mode === "stt");
+  $("subtitle").textContent = SUBTITLES[mode];
+  $("footNote").textContent = FOOTNOTES[mode];
+  if (mode === "stt") checkSttReady();
+}
+
+// --- Shared job machinery. Each mode passes its own element ids, so both use
+// the same polling/progress/error code path.
+const TTS_UI = { stage:"stageName", pct:"pct", fill:"fill", progress:"progress",
+                 go:"go", err:"err", results:"results" };
+const STT_UI = { stage:"sttStageName", pct:"sttPct", fill:"sttFill", progress:"sttProgress",
+                 go:"sttGo", err:"sttErr", results:"sttResults" };
+const timers = { tts:null, stt:null };
+
+function pollJob(kind, ui, jobId, onDone) {
+  clearInterval(timers[kind]);
+  timers[kind] = setInterval(async () => {
+    let j;
+    try { j = await (await fetch(`/jobs/${jobId}`)).json(); }
+    catch { return; }
+    setProgress(ui, j.stage || j.status, j.progress || 0);
+    if (j.status === "done") { clearInterval(timers[kind]); onDone(jobId, j); }
+    else if (j.status === "error") { clearInterval(timers[kind]); showError(kind, ui, j.error); }
+  }, 1500);
+}
+
+function setProgress(ui, stage, frac) {
+  $(ui.stage).textContent = prettyStage(stage);
+  const pct = Math.round(frac * 100);
+  $(ui.pct).textContent = pct + "%";
+  $(ui.fill).style.width = pct + "%";
+}
+function prettyStage(s) {
+  return ({uploading:"Uploading", extract:"Extracting text", chapters:"Detecting chapters",
+           tts:"Synthesizing speech", stitch:"Stitching audio", textpdf:"Writing text PDF",
+           loading:"Loading speech model", transcribe:"Transcribing audio",
+           writing:"Writing transcript",
+           done:"Done", queued:"Queued", running:"Working"})[s] || s;
+}
+
+function showError(kind, ui, msg) {
+  clearInterval(timers[kind]);
+  $(ui.go).disabled = false;
+  $(ui.progress).style.display = "none";
+  const el = $(ui.err); el.style.display = "block"; el.textContent = "⚠️ " + msg;
+}
+
+// --- TTS: PDF -> audiobook (unchanged behavior).
 $("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("err").style.display = "none";
@@ -287,42 +437,18 @@ $("form").addEventListener("submit", async (e) => {
 
   $("go").disabled = true;
   $("progress").style.display = "block";
-  setProgress("uploading", 0);
+  setProgress(TTS_UI, "uploading", 0);
 
   try {
     const res = await fetch("/convert", { method: "POST", body: fd });
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
     const { job_id } = await res.json();
-    poll(job_id);
-  } catch (e) { showError(e.message); }
+    pollJob("tts", TTS_UI, job_id, showResults);
+  } catch (e) { showError("tts", TTS_UI, e.message); }
 });
 
-function poll(jobId) {
-  clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    let j;
-    try { j = await (await fetch(`/jobs/${jobId}`)).json(); }
-    catch { return; }
-    setProgress(j.stage || j.status, j.progress || 0);
-    if (j.status === "done") { clearInterval(pollTimer); showResults(jobId, j); }
-    else if (j.status === "error") { clearInterval(pollTimer); showError(j.error); }
-  }, 1500);
-}
-
-function setProgress(stage, frac) {
-  $("stageName").textContent = prettyStage(stage);
-  const pct = Math.round(frac * 100);
-  $("pct").textContent = pct + "%";
-  $("fill").style.width = pct + "%";
-}
-function prettyStage(s) {
-  return ({uploading:"Uploading", extract:"Extracting text", chapters:"Detecting chapters",
-           tts:"Synthesizing speech", stitch:"Stitching audio", textpdf:"Writing text PDF",
-           done:"Done", queued:"Queued", running:"Working"})[s] || s;
-}
-
 function showResults(jobId, j) {
-  setProgress("done", 1);
+  setProgress(TTS_UI, "done", 1);
   $("go").disabled = false;
   $("results").style.display = "block";
   $("resultMeta").textContent = `"${j.title}" — ${j.chapters.length} chapter${j.chapters.length===1?"":"s"}`;
@@ -333,11 +459,67 @@ function showResults(jobId, j) {
   else pdf.style.display = "none";
 }
 
-function showError(msg) {
-  clearInterval(pollTimer);
-  $("go").disabled = false;
-  $("progress").style.display = "none";
-  const el = $("err"); el.style.display = "block"; el.textContent = "⚠️ " + msg;
+// --- STT: audio -> transcript.
+let sttReadyChecked = false;
+async function checkSttReady() {
+  if (sttReadyChecked) return;
+  sttReadyChecked = true;
+  try {
+    const s = await (await fetch("/stt/status")).json();
+    if (!s.ready) {
+      const n = $("sttUnavailable");
+      n.style.display = "block";
+      n.textContent = "⚠️ " + s.detail;
+      $("sttGo").disabled = true;
+    }
+  } catch { /* leave enabled; the upload will report any real problem */ }
+}
+
+$("sttForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("sttErr").style.display = "none";
+  $("sttResults").style.display = "none";
+  if (!$("audio").files[0]) return;
+
+  const fd = new FormData();
+  fd.append("audio", $("audio").files[0]);
+  fd.append("model", $("sttModel").value);
+  fd.append("language", $("sttLang").value);
+  fd.append("title", $("sttTitle").value);
+
+  $("sttGo").disabled = true;
+  $("sttProgress").style.display = "block";
+  setProgress(STT_UI, "uploading", 0);
+
+  try {
+    const res = await fetch("/transcribe", { method: "POST", body: fd });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const { job_id } = await res.json();
+    pollJob("stt", STT_UI, job_id, showSttResults);
+  } catch (e) { showError("stt", STT_UI, e.message); }
+});
+
+async function showSttResults(jobId, j) {
+  setProgress(STT_UI, "done", 1);
+  $("sttGo").disabled = false;
+  $("sttResults").style.display = "block";
+
+  const mins = j.duration ? `${Math.floor(j.duration/60)}m ${Math.round(j.duration%60)}s` : "";
+  $("sttMeta").textContent =
+    `"${j.title}"${j.language ? ` — ${j.language.toUpperCase()}` : ""}${mins ? ` · ${mins}` : ""}`;
+
+  $("dlTxt").href = `/jobs/${jobId}/transcript.txt`;
+  $("dlMd").href = `/jobs/${jobId}/transcript.md`;
+  $("dlJson").href = `/jobs/${jobId}/transcript.json`;
+
+  const box = $("sttPreview");
+  if (j.empty) {
+    box.textContent = "No speech was detected in this audio.";
+    return;
+  }
+  try {                       // show the transcript inline, not just a download
+    box.textContent = await (await fetch(`/jobs/${jobId}/transcript.txt`)).text();
+  } catch { box.textContent = "(preview unavailable — use the download below)"; }
 }
 </script>
 </body>
