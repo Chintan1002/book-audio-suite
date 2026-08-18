@@ -1,0 +1,5 @@
+# Feature B — Speech-to-Text (STT)
+faster-whisper>=1.0.0     # transcription engine (CTranslate2 Whisper)
+numpy>=1.24               # audio buffers
+sounddevice>=0.4.6        # live microphone capture (live mode only)
+# FFmpeg must also be installed on the system (brew install ffmpeg)
