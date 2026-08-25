@@ -35,3 +35,6 @@ textpdf_demo.pdf
 
 # OS cruft
 .DS_Store
+
+# Local config (never commit)
+.env

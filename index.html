@@ -156,6 +156,27 @@
           background:rgba(139,123,255,.10); border:1px solid rgba(139,123,255,.30);
           color:var(--fg); }
   .note.warn { background:rgba(251,113,133,.08); border-color:rgba(251,113,133,.30); }
+  /* Drive save */
+  .savebar { display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap; }
+  .drive-btn {
+    display:inline-flex; align-items:center; gap:8px; padding:11px 15px;
+    border-radius:11px; cursor:pointer; font-size:14px; font-weight:600;
+    font-family:inherit; color:var(--fg);
+    background:var(--field); border:1px solid var(--line);
+    transition:border-color .15s, background .15s, transform .06s;
+  }
+  .drive-btn:hover:not(:disabled) { border-color:var(--a2); background:rgba(74,168,255,.06); }
+  .drive-btn:active:not(:disabled) { transform:translateY(1px); }
+  .drive-btn:disabled { opacity:.55; cursor:default; }
+  .drive-status { font-size:13px; color:var(--muted); }
+  .drive-status.ok { color:var(--ok); }
+  .drive-status.bad { color:var(--err); }
+  .lib-btn {
+    padding:0 13px; height:40px; border-radius:11px; font-size:13px; font-weight:600;
+    font-family:inherit; cursor:pointer; white-space:nowrap; color:var(--fg);
+    background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px);
+  }
+  .lib-btn:hover { border-color:var(--a2); }
   .transcript { margin-top:14px; padding:13px; max-height:230px; overflow:auto;
                 background:var(--field); border:1px solid var(--line); border-radius:11px;
                 font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
@@ -166,6 +187,8 @@
   <div class="brand">
     <div class="logo">🎧</div>
     <h1>Audiobook Creator</h1>
+    <button type="button" id="libraryBtn" class="lib-btn" style="display:none"
+            title="Open your Book·Audio Suite folder in Google Drive">📂 My library</button>
     <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
   </div>
   <p class="sub" id="subtitle">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
@@ -232,6 +255,10 @@
       <a class="dl" id="dlPdf" href="#" style="display:none">
         <span class="ico">📄</span><span><div class="t">Text PDF</div><div class="d">searchable text from OCR</div></span><span class="arrow">↓</span>
       </a>
+      <div class="savebar" id="ttsSaveBar" style="display:none">
+        <button type="button" class="drive-btn" id="ttsSaveBtn">▲ Save to my Drive</button>
+        <span class="drive-status" id="ttsSaveStatus"></span>
+      </div>
     </div>
 
     <div class="err" id="err"></div>
@@ -295,6 +322,10 @@
       <a class="dl" id="dlJson" href="#">
         <span class="ico">⏱️</span><span><div class="t">Timestamps (.json)</div><div class="d">segments + word timings</div></span><span class="arrow">↓</span>
       </a>
+      <div class="savebar" id="sttSaveBar" style="display:none">
+        <button type="button" class="drive-btn" id="sttSaveBtn">▲ Save to my Drive</button>
+        <span class="drive-status" id="sttSaveStatus"></span>
+      </div>
     </div>
 
     <div class="err" id="sttErr"></div>
@@ -303,6 +334,7 @@
   <p class="foot" id="footNote">Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text</p>
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -457,7 +489,138 @@ function showResults(jobId, j) {
   const pdf = $("dlPdf");
   if (j.has_text_pdf) { pdf.style.display = "flex"; pdf.href = `/jobs/${jobId}/textpdf`; }
   else pdf.style.display = "none";
+
+  lastJob.tts = jobId;
+  if (driveCfg && driveCfg.drive_enabled) {
+    $("ttsSaveBar").style.display = "flex";
+    $("ttsSaveStatus").textContent = "";
+    $("ttsSaveStatus").className = "drive-status";
+    $("ttsSaveBtn").textContent = "▲ Save to my Drive";
+  }
 }
+
+// --- Google Drive: "bring your own storage".
+// The access token lives in this variable and nowhere else — never
+// localStorage, never a cookie, never sent to us except as a Bearer header.
+let driveCfg = null, tokenClient = null, driveToken = null;
+const lastJob = { tts: null, stt: null };
+
+async function initDrive() {
+  try { driveCfg = await (await fetch("/auth/config")).json(); }
+  catch { return; }
+  if (!driveCfg.drive_enabled) return;      // no client id -> feature stays hidden
+  $("libraryBtn").style.display = "block";
+}
+initDrive();
+
+function ensureTokenClient() {
+  if (tokenClient) return tokenClient;
+  if (!window.google || !google.accounts) throw new Error(
+    "Google sign-in didn't load. Check your connection and reload.");
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: driveCfg.google_client_id,
+    scope: driveCfg.scope,
+    callback: () => {},                      // replaced per request below
+  });
+  return tokenClient;
+}
+
+// Run `fn(token)`, asking Google for consent first if we don't have a token yet.
+function withDriveToken(fn, onError) {
+  if (driveToken) return fn(driveToken);
+  let client;
+  try { client = ensureTokenClient(); }
+  catch (e) { return onError(e.message); }
+  client.callback = (resp) => {
+    if (resp.error) return onError("Google sign-in was cancelled.");
+    driveToken = resp.access_token;
+    fn(driveToken);
+  };
+  client.requestAccessToken();
+}
+
+// --- "My library": resolve the folder server-side, then open it.
+$("libraryBtn").addEventListener("click", () => {
+  const btn = $("libraryBtn");
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Opening…";
+  const done = () => { btn.disabled = false; btn.textContent = label; };
+
+  withDriveToken(async (token) => {
+    try {
+      const res = await fetch("/drive/library", {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+      window.open((await res.json()).url, "_blank", "noopener");
+    } catch (e) { alert("Couldn't open your library: " + e.message); }
+    finally { done(); }
+  }, (msg) => { alert(msg); done(); });
+});
+
+// --- "Save to my Drive", for either mode.
+function wireSave(kind, btnId, statusId) {
+  $(btnId).addEventListener("click", () => {
+    const jobId = lastJob[kind];
+    if (!jobId) return;
+    const btn = $(btnId), status = $(statusId);
+    status.className = "drive-status";
+    status.textContent = "Connecting to Google…";
+    btn.disabled = true;
+
+    withDriveToken(async (token) => {
+      try {
+        const res = await fetch(`/jobs/${jobId}/save-to-drive`, {
+          method: "POST", headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        pollSave(jobId, btn, status);
+      } catch (e) {
+        status.className = "drive-status bad";
+        status.textContent = "⚠️ " + e.message;
+        btn.disabled = false;
+      }
+    }, (msg) => {
+      status.className = "drive-status bad";
+      status.textContent = "⚠️ " + msg;
+      btn.disabled = false;
+    });
+  });
+}
+
+function pollSave(jobId, btn, status) {
+  const timer = setInterval(async () => {
+    let s;
+    try { s = await (await fetch(`/jobs/${jobId}/save-status`)).json(); }
+    catch { return; }
+
+    if (s.status === "running") {
+      status.textContent = s.total
+        ? `Uploading ${s.index} of ${s.total}…` : "Preparing…";
+      return;
+    }
+    clearInterval(timer);
+    btn.disabled = false;
+
+    if (s.status === "done") {
+      status.className = "drive-status ok";
+      status.innerHTML = `✓ Saved ${s.saved} file${s.saved === 1 ? "" : "s"} — ` +
+        `<a href="${s.folder_url}" target="_blank" rel="noopener">open folder</a>`;
+      btn.textContent = "▲ Save again";
+    } else if (s.status === "partial") {
+      // A 21-file save shouldn't be reported as a flat failure.
+      status.className = "drive-status bad";
+      status.innerHTML = `Saved ${s.saved}, ${s.failed.length} failed — ` +
+        `<a href="${s.folder_url}" target="_blank" rel="noopener">open folder</a>`;
+    } else if (s.status === "error") {
+      status.className = "drive-status bad";
+      status.textContent = "⚠️ " + (s.error || "Save failed.");
+    }
+  }, 1200);
+}
+
+wireSave("tts", "ttsSaveBtn", "ttsSaveStatus");
+wireSave("stt", "sttSaveBtn", "sttSaveStatus");
 
 // --- STT: audio -> transcript.
 let sttReadyChecked = false;
@@ -511,6 +674,14 @@ async function showSttResults(jobId, j) {
   $("dlTxt").href = `/jobs/${jobId}/transcript.txt`;
   $("dlMd").href = `/jobs/${jobId}/transcript.md`;
   $("dlJson").href = `/jobs/${jobId}/transcript.json`;
+
+  lastJob.stt = jobId;
+  if (driveCfg && driveCfg.drive_enabled) {
+    $("sttSaveBar").style.display = "flex";
+    $("sttSaveStatus").textContent = "";
+    $("sttSaveStatus").className = "drive-status";
+    $("sttSaveBtn").textContent = "▲ Save to my Drive";
+  }
 
   const box = $("sttPreview");
   if (j.empty) {

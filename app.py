@@ -45,7 +45,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import edge_tts
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 from db.repository import JobRecord, MemoryRepository, Repository
@@ -59,6 +59,27 @@ from tts import DEFAULT_VOICE, make_edge_engine
 APP_DIR = Path(__file__).parent
 JOBS_DIR = APP_DIR / "jobs"
 JOBS_DIR.mkdir(exist_ok=True)
+
+
+def _load_dotenv() -> None:
+    """Read .env into the environment so local config doesn't have to be
+    exported every session. Real environment variables always win."""
+    env_file = APP_DIR / ".env"
+    if not env_file.is_file():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_dotenv()
+
+# Google Drive "bring your own storage". Unset -> the Save/Library buttons stay
+# hidden and the app behaves exactly as it does today.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 
 # Cache for voice-preview clips, keyed by (voice, rate). Repeat previews are
 # then instant instead of re-hitting Edge-TTS.
@@ -124,6 +145,12 @@ CURRENT_USER = os.environ.get("DEV_USER_ID", "00000000-0000-0000-0000-0000000000
 _transcriber = None              # type: ignore[var-annotated]  (lazy stt import)
 _stt_model_lock = threading.Lock()
 _stt_run_lock = threading.Lock()
+
+# Progress for in-flight Drive saves, keyed by job id. Deliberately transient:
+# it is UI state, and the files are safely in Drive whether or not we remember.
+# NOTE: the access token is never stored here, only passed to the worker.
+_saves: dict[str, dict] = {}
+_saves_lock = threading.Lock()
 
 
 def _get_transcriber(model: str):
@@ -247,6 +274,77 @@ def _run_stt_job(job_id: str, audio_path: Path, out_dir: Path,
         repo.update_job(job_id, status="error", error=_friendly_stt_error(e))
 
 
+def _job_artifacts(job: JobRecord) -> list[tuple[str, Path]]:
+    """Every file a finished job produced, as (subfolder, path) pairs.
+
+    '' means the conversion folder itself; 'Chapters' nests one level deeper so
+    a 19-chapter book doesn't bury the full audiobook and the text PDF.
+    """
+    out = job.result or {}
+    items: list[tuple[str, Path]] = []
+
+    def add(sub: str, raw: str | None) -> None:
+        if raw and Path(raw).is_file():
+            items.append((sub, Path(raw)))
+
+    if job.kind == "tts":
+        add("", out.get("full"))
+        add("", out.get("text_pdf"))
+        for chapter in out.get("chapters", []):
+            add("Chapters", chapter)
+    else:
+        for fmt in ("txt", "md", "json"):
+            add("", out.get(fmt))
+    return items
+
+
+def _run_drive_save(job_id: str, token: str, kind: str, title: str,
+                    artifacts: list[tuple[str, Path]]) -> None:
+    """Worker thread: upload a job's artifacts to the user's Drive.
+
+    Runs in the background because a 330 MB audiobook plus 19 chapters takes
+    minutes — far longer than an HTTP request should be held open.
+    """
+    from drive import DriveClient, DriveError
+
+    def progress(**fields) -> None:
+        with _saves_lock:
+            _saves.setdefault(job_id, {}).update(fields)
+
+    progress(status="running", index=0, total=len(artifacts), current="",
+             saved=0, failed=[], folder_url=None, error=None)
+    try:
+        client = DriveClient(token)
+        result = client.save_artifacts(
+            kind, title, artifacts,
+            on_file=lambda name, i, total: progress(current=name, index=i, total=total),
+        )
+        progress(
+            status="done" if result.ok else "partial",
+            folder_url=result.folder_url,
+            saved=len(result.saved),
+            failed=[{"name": n, "error": e} for n, e in result.failed],
+        )
+    except DriveError as e:
+        progress(status="error", error=str(e))
+    except Exception as e:                       # never leak a token in a trace
+        progress(status="error", error=f"{type(e).__name__}: {e}")
+
+
+def _bearer(authorization: str | None) -> str:
+    """Pull the Google access token out of the Authorization header.
+
+    Header, never a query string: query params end up in access logs, and this
+    token can write to someone's Drive.
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Sign in with Google to use Drive.")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(401, "Sign in with Google to use Drive.")
+    return token
+
+
 # --- Lifecycle ---------------------------------------------------------------
 
 @app.on_event("startup")
@@ -316,6 +414,73 @@ async def sample(voice: str = DEFAULT_VOICE, rate: str = "") -> FileResponse:
             path.unlink(missing_ok=True)
             raise HTTPException(400, f"Could not synthesize preview: {e}")
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.get("/auth/config")
+def auth_config() -> dict:
+    """What the frontend needs to offer Drive. With no client id configured the
+    UI hides the Save/Library buttons entirely and nothing else changes."""
+    return {
+        "google_client_id": GOOGLE_CLIENT_ID,
+        "drive_enabled": bool(GOOGLE_CLIENT_ID),
+        "scope": "https://www.googleapis.com/auth/drive.file",
+    }
+
+
+@app.post("/jobs/{job_id}/save-to-drive")
+async def save_to_drive(job_id: str, authorization: str = Header(None)) -> dict:
+    """Start uploading a finished job's artifacts to the caller's Drive.
+
+    Returns immediately and reports progress through /save-status: a full book
+    is ~21 uploads and hundreds of megabytes, which is far too long to hold an
+    HTTP request open.
+    """
+    token = _bearer(authorization)
+    job = _job_or_404(job_id)
+    if job.status != "done":
+        raise HTTPException(409, "That job hasn't finished yet.")
+
+    artifacts = _job_artifacts(job)
+    if not artifacts:
+        raise HTTPException(
+            404,
+            "Those files are no longer on the server. Generated files are kept "
+            "for 7 days — please run the conversion again.",
+        )
+
+    with _saves_lock:
+        if _saves.get(job_id, {}).get("status") == "running":
+            raise HTTPException(409, "That save is already in progress.")
+
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(_executor, _run_drive_save, job_id, token,
+                         job.kind, job.title, artifacts)
+    return {"started": True, "files": len(artifacts)}
+
+
+@app.get("/jobs/{job_id}/save-status")
+def save_status(job_id: str) -> dict:
+    _job_or_404(job_id)                     # ownership check
+    with _saves_lock:
+        state = _saves.get(job_id)
+    return state or {"status": "idle"}
+
+
+@app.post("/drive/library")
+def drive_library(authorization: str = Header(None)) -> dict:
+    """Resolve the user's library folder and hand back its Drive URL.
+
+    Creates the folder structure if it doesn't exist yet, so this works for a
+    first-time visitor who has never saved anything.
+    """
+    token = _bearer(authorization)
+    from drive import DriveClient, DriveError, folder_url
+
+    try:
+        structure = DriveClient(token).ensure_structure()
+    except DriveError as e:
+        raise HTTPException(502, str(e))
+    return {"url": folder_url(structure["root"])}
 
 
 @app.post("/convert")
