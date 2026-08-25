@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audiobook Creator</title>
+<title>Book·Audio Suite</title>
 <style>
   :root {
     color-scheme: dark;
@@ -40,7 +40,9 @@
   .wrap { max-width:600px; margin:0 auto; padding:56px 20px 72px; }
 
   /* Hero */
-  .brand { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:nowrap; }
+  .brand h1 { font-size:21px; white-space:nowrap; }
+  .brand .logo { width:38px; height:38px; font-size:19px; flex:0 0 auto; }
   .theme-toggle {
     margin-left:auto; width:40px; height:40px; border-radius:11px; font-size:18px;
     display:grid; place-items:center; cursor:pointer; color:var(--fg);
@@ -142,6 +144,43 @@
          padding:12px 14px; border-radius:11px; }
   .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:22px; opacity:.75; }
 
+  /* Landing */
+  .landing { max-width:600px; margin:0 auto; padding:72px 20px 80px; text-align:center; }
+  .landing .logo { width:60px; height:60px; font-size:30px; margin:0 auto 22px;
+                   border-radius:16px; }
+  .landing h1 { font-size:clamp(30px,6vw,42px); justify-content:center; margin-bottom:12px; }
+  .landing .tagline { color:var(--muted); font-size:17px; margin:0 auto 34px; max-width:44ch; }
+  .features { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:34px; text-align:left; }
+  @media (max-width:560px) { .features { grid-template-columns:1fr; } }
+  .feature { padding:18px; border-radius:14px; background:var(--card);
+             border:1px solid var(--line); backdrop-filter:blur(12px); }
+  .feature .fi { font-size:22px; display:block; margin-bottom:9px; }
+  .feature h3 { margin:0 0 5px; font-size:15px; }
+  .feature p { margin:0; font-size:13.5px; color:var(--muted); line-height:1.5; }
+  .signin-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .signin-note { font-size:12.5px; color:var(--muted); max-width:40ch; line-height:1.55; }
+  #gsiButton { min-height:44px; }
+
+  /* Account chip */
+  .account { display:flex; align-items:center; gap:8px; margin-left:auto; flex:0 0 auto; }
+  .avatar { width:28px; height:28px; border-radius:50%; border:1px solid var(--line);
+            flex:0 0 auto; }
+  .who { font-size:13px; color:var(--muted); max-width:110px; overflow:hidden;
+         text-overflow:ellipsis; white-space:nowrap; }
+  .signout { background:none; border:0; color:var(--muted); font-size:12.5px;
+             cursor:pointer; font-family:inherit; padding:4px 6px; border-radius:6px;
+             white-space:nowrap; flex:0 0 auto; }
+  .signout:hover { color:var(--fg); background:var(--field); }
+  .lib-btn, .theme-toggle { flex:0 0 auto; }
+  .theme-toggle { margin-left:0; }
+  /* On a narrow screen the name and the library label are the first to go. */
+  @media (max-width:600px) {
+    .who { display:none; }
+    .brand h1 { font-size:18px; }
+    .lib-btn { font-size:0; padding:0 12px; }
+    .lib-btn::before { content:"📂"; font-size:15px; }
+  }
+
   /* Mode tabs */
   .tabs { display:flex; gap:6px; padding:5px; margin-bottom:18px; border-radius:14px;
           background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px); }
@@ -183,10 +222,47 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- Shown until the user signs in. The tool itself lives in #app below. -->
+<div class="landing" id="landing">
+  <div class="logo">🎧</div>
+  <h1>Book·Audio Suite</h1>
+  <p class="tagline">Turn a PDF into a narrated audiobook, or a recording into a
+     clean transcript — then keep it in your own Google Drive.</p>
+
+  <div class="features">
+    <div class="feature">
+      <span class="fi">📖 → 🎧</span>
+      <h3>Book → Audio</h3>
+      <p>Upload a PDF, pick from 47 natural voices, and get a chaptered
+         audiobook you can play anywhere.</p>
+    </div>
+    <div class="feature">
+      <span class="fi">🎙️ → 📝</span>
+      <h3>Audio → Text</h3>
+      <p>Upload a recording and get a punctuated transcript with timestamps,
+         transcribed on-device.</p>
+    </div>
+  </div>
+
+  <div class="signin-wrap">
+    <div id="gsiButton"></div>
+    <p class="signin-note" id="signinNote">
+      We never store your files. Anything you save goes to your own Google
+      Drive, and we only ask for Drive access when you choose to save.
+    </p>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
   <div class="brand">
     <div class="logo">🎧</div>
-    <h1>Audiobook Creator</h1>
+    <h1>Book·Audio Suite</h1>
+    <div class="account" id="account" style="display:none">
+      <img class="avatar" id="avatar" alt="" referrerpolicy="no-referrer">
+      <span class="who" id="who"></span>
+      <button type="button" class="signout" id="signOutBtn">Sign out</button>
+    </div>
     <button type="button" id="libraryBtn" class="lib-btn" style="display:none"
             title="Open your Book·Audio Suite folder in Google Drive">📂 My library</button>
     <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
@@ -347,8 +423,11 @@ function applyTheme(t) {
 }
 applyTheme(localStorage.getItem("theme")
   || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
-$("themeToggle").addEventListener("click", () =>
-  applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light"));
+$("themeToggle").addEventListener("click", () => {
+  applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light");
+  // Google renders its button as an iframe, so it needs re-rendering to match.
+  if ($("landing").style.display !== "none") renderSignInButton();
+});
 
 // Populate the voice dropdown from real Edge-TTS data.
 async function loadVoices() {
@@ -505,13 +584,120 @@ function showResults(jobId, j) {
 let driveCfg = null, tokenClient = null, driveToken = null;
 const lastJob = { tts: null, stt: null };
 
-async function initDrive() {
-  try { driveCfg = await (await fetch("/auth/config")).json(); }
-  catch { return; }
-  if (!driveCfg.drive_enabled) return;      // no client id -> feature stays hidden
-  $("libraryBtn").style.display = "block";
+// --- Sign-in gate -------------------------------------------------------------
+// Identity first (openid/email/profile via Sign In With Google). Drive access is
+// requested LATER, only when someone actually clicks Save — so first contact is
+// a friendly "sign in" rather than "this app wants your Google Drive".
+//
+// NOTE: this gate is UX, not security. The API endpoints are still open; real
+// enforcement means verifying this ID token server-side on every request.
+const SESSION_KEY = "bas.profile";
+
+function decodeJwt(token) {
+  const part = token.split(".")[1];
+  const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+  return JSON.parse(decodeURIComponent(escape(json)));
 }
-initDrive();
+
+function loadSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    if (!saved) return null;
+    if (saved.exp && Date.now() / 1000 > saved.exp) {   // expired -> sign out
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return saved;
+  } catch { return null; }
+}
+
+function onCredential(response) {
+  let claims;
+  try { claims = decodeJwt(response.credential); }
+  catch { return showSignInError("That sign-in response couldn't be read."); }
+  const profile = {
+    sub: claims.sub, name: claims.name || claims.email,
+    email: claims.email, picture: claims.picture, exp: claims.exp,
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
+  showApp(profile);
+}
+
+function showSignInError(msg) {
+  const note = $("signinNote");
+  note.textContent = "⚠️ " + msg;
+  note.style.color = "var(--err)";
+}
+
+function showApp(profile) {
+  $("landing").style.display = "none";
+  $("app").style.display = "block";
+  $("account").style.display = "flex";
+  $("who").textContent = profile.name || profile.email || "Signed in";
+  $("who").title = profile.email || "";
+  if (profile.picture) $("avatar").src = profile.picture;
+  else $("avatar").style.display = "none";
+  if (driveCfg && driveCfg.drive_enabled) $("libraryBtn").style.display = "block";
+}
+
+function showLanding() {
+  $("app").style.display = "none";
+  $("landing").style.display = "block";
+}
+
+$("signOutBtn").addEventListener("click", () => {
+  localStorage.removeItem(SESSION_KEY);
+  driveToken = null;                          // drop Drive access too
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+  showLanding();
+  renderSignInButton();
+});
+
+function renderSignInButton() {
+  if (!driveCfg || !driveCfg.google_client_id || !window.google || !google.accounts) return;
+  google.accounts.id.initialize({
+    client_id: driveCfg.google_client_id,
+    callback: onCredential,
+    auto_select: false,
+  });
+  const el = $("gsiButton");
+  el.innerHTML = "";
+  google.accounts.id.renderButton(el, {
+    theme: root.getAttribute("data-theme") === "light" ? "outline" : "filled_black",
+    size: "large", text: "continue_with", shape: "pill", width: 280,
+  });
+}
+
+async function initAuth() {
+  try { driveCfg = await (await fetch("/auth/config")).json(); }
+  catch { return showSignInError("Couldn't reach the server."); }
+
+  if (!driveCfg.drive_enabled) {
+    // No client id configured: don't strand the user behind a gate that can
+    // never open — let them straight into the tool.
+    showApp({ name: "Local user" });
+    $("account").style.display = "none";
+    return;
+  }
+
+  const existing = loadSession();
+  if (existing) { showApp(existing); return; }
+
+  // Wait for the Google script, which is loaded async.
+  let waited = 0;
+  const timer = setInterval(() => {
+    if (window.google && google.accounts && google.accounts.id) {
+      clearInterval(timer);
+      renderSignInButton();
+    } else if ((waited += 200) > 6000) {
+      clearInterval(timer);
+      showSignInError("Google sign-in didn't load. Check your connection and reload.");
+    }
+  }, 200);
+}
+initAuth();
 
 function ensureTokenClient() {
   if (tokenClient) return tokenClient;

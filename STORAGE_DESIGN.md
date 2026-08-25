@@ -21,6 +21,12 @@ How finished creations are stored and where the "library" lives. Core principle:
 >    anonymous.
 > 4. **§6** — generated files are kept for **7 days**, then swept. "Never at
 >    rest" and "the download button always works" cannot both be true.
+> 5. **§1/§5 — REVERSED: sign-in is now required to use the tool at all.** A
+>    landing page gates everything behind "Continue with Google"; the anonymous
+>    core flow is gone. Consequence to plan for: while the app is unverified
+>    Google caps sign-in at 100 test users, so verification now blocks *all*
+>    use rather than only the save feature. Mitigation in place: the gate asks
+>    for identity only, and `drive.file` is still requested later, at save.
 
 ---
 
