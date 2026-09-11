@@ -83,7 +83,8 @@
 
   /* ---------- scroll stages ---------- */
   #landing .scroller { position:relative; }
-  #landing .stage-track { height:155vh; position:relative; }
+  #landing .stage-track { height:155vh; position:relative; overflow:clip; }
+  #landing .stage-track.short { height:165vh; }
   #landing .stage {
     position:sticky; top:0; height:100vh;
     display:grid; place-items:center; overflow:hidden;
@@ -136,7 +137,7 @@
   /* ---------- choose ---------- */
   #landing .choose {
     min-height:100vh; display:grid; align-content:center;
-    padding:96px 20px 88px; max-width:1040px; margin:0 auto;
+    padding:72px 20px 72px; max-width:1040px; margin:0 auto;
   }
   #landing .choose h2 { font:900 clamp(26px,5vw,44px)/.95 var(--display); letter-spacing:-.03em;
                text-transform:uppercase; margin:0 0 6px; text-align:center; }
@@ -152,7 +153,25 @@
   }
   #landing .pick:hover { transform:translate(-3px,-3px); box-shadow:10px 10px 0 var(--ink); }
   #landing .pick:active { transform:translate(2px,2px); box-shadow:4px 4px 0 var(--ink); }
+  #landing .pick { position:relative; overflow:hidden; }
+  /* oversized index numeral, ghosted into the corner */
+  #landing .pick::after {
+    content:attr(data-n); position:absolute; right:-8px; top:-26px;
+    font:900 128px/1 var(--display); letter-spacing:-.04em;
+    color:var(--ink); opacity:.07; pointer-events:none;
+  }
   #landing .pick .num { font:600 10px/1 var(--mono); letter-spacing:.2em; color:var(--muted); }
+  #landing .glyph { height:58px; margin:0 0 4px; color:var(--ink); }
+  #landing .glyph svg { height:100%; width:auto; display:block; }
+  /* hover inverts the whole card — a print-negative flip */
+  #landing .pick:hover { background:var(--ink); color:var(--paper); }
+  #landing .pick:hover .num,
+  #landing .pick:hover p,
+  #landing .pick:hover .specs li { color:var(--paper); opacity:.82; }
+  #landing .pick:hover .specs li b { color:var(--paper); opacity:1; }
+  #landing .pick:hover .glyph { color:var(--paper); }
+  #landing .pick:hover::after { color:var(--paper); opacity:.12; }
+  #landing .pick:hover .specs li { border-color:rgba(151,163,127,.3); }
   #landing .pick h3 { font:900 clamp(22px,3.4vw,34px)/.95 var(--display); letter-spacing:-.02em;
              text-transform:uppercase; margin:12px 0 8px; }
   #landing .pick p { margin:0 0 22px; color:var(--ink-soft); font-size:14.5px; }
@@ -323,7 +342,7 @@
   </div>
 
   <!-- Stage 2 -->
-  <div class="stage-track">
+  <div class="stage-track short">
     <section class="stage" id="stage2">
       <div class="wave-wrap"><canvas id="wave"></canvas></div>
       <div class="wave-title">Every word, rendered</div>
@@ -340,7 +359,16 @@
     <h2>Pick your machine</h2>
     <p class="lede">Both are free and run right here. You can switch any time.</p>
     <div class="picks">
-      <button type="button" class="pick" data-pick="tts">
+      <button type="button" class="pick" data-pick="tts" data-n="01">
+        <div class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 128 58" fill="none" stroke="currentColor" stroke-width="2.4">
+            <rect x="2" y="8" width="34" height="42"/>
+            <path d="M10 18h18M10 26h18M10 34h12"/>
+            <path d="M44 29h20M58 23l7 6-7 6" stroke-linecap="square"/>
+            <path d="M78 20v18l12 8V12z"/>
+            <path d="M98 22c4 4 4 14 0 18M106 17c7 7 7 21 0 28" stroke-linecap="round"/>
+          </svg>
+        </div>
         <div class="num">01 — Text to speech</div>
         <h3>Book → Audio</h3>
         <p>Upload a PDF, choose from 47 voices, and download a chaptered
@@ -352,7 +380,16 @@
         </ul>
         <span class="go-tag">Start →</span>
       </button>
-      <button type="button" class="pick" data-pick="stt">
+      <button type="button" class="pick" data-pick="stt" data-n="02">
+        <div class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 128 58" fill="none" stroke="currentColor" stroke-width="2.4">
+            <path d="M4 29v0M4 22v14M12 16v26M20 10v38M28 19v20M36 13v32M44 24v10"
+                  stroke-linecap="square"/>
+            <path d="M54 29h20M68 23l7 6-7 6" stroke-linecap="square"/>
+            <rect x="88" y="8" width="36" height="42"/>
+            <path d="M96 18h20M96 26h20M96 34h13"/>
+          </svg>
+        </div>
         <div class="num">02 — Speech to text</div>
         <h3>Audio → Text</h3>
         <p>Upload a recording and download a punctuated transcript with
@@ -828,10 +865,7 @@ function onScroll() {
       }
       if (s2) {
         waveProgress = stageProgress(s2);
-        // Fade the whole stage out at the end of its track, otherwise the
-        // chips and bar tips bleed into the section below.
-        const fade = waveProgress > 0.82 ? 1 - (waveProgress - 0.82) / 0.18 : 1;
-        s2.style.opacity = String(Math.max(0, fade));
+        s2.style.opacity = "1";
         const secs = Math.floor(waveProgress * 36);
         const el = $$("waveTime");
         if (el) el.textContent =
