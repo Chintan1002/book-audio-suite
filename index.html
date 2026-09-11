@@ -211,25 +211,30 @@
   #tool .sub { color:var(--ink-soft); margin:2px 0 22px; font-size:14.5px; }
 
   #tool .tabs { display:flex; gap:0; margin-bottom:20px; border:1.5px solid var(--line); }
-  #tool .tab { flex:1; padding:12px; border:0; cursor:pointer; background:transparent;
-         color:var(--muted); font:700 11px/1 var(--mono); letter-spacing:.16em;
-         text-transform:uppercase; font-family:var(--mono); }
+  #tool .tab { flex:1; padding:15px 12px; border:0; cursor:pointer; background:transparent;
+         color:var(--muted); font:600 14px/1 var(--sans); letter-spacing:.03em; }
   #tool .tab + .tab { border-left:1.5px solid var(--line); }
   #tool .tab:hover { color:var(--ink); }
   #tool .tab.active { background:var(--ink); color:var(--paper); }
   #tool .mode { display:none; } #tool .mode.active { display:block; }
 
   #tool .card { background:var(--panel); border:1.5px solid var(--line);
-          box-shadow:7px 7px 0 var(--ink); padding:22px; }
+          box-shadow:7px 7px 0 var(--ink); padding:30px 28px; }
 
-  #tool label { display:block; font:700 10px/1 var(--mono); letter-spacing:.16em;
-          text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
-  #tool label:first-of-type { margin-top:0; }
-  #tool .hint { font-weight:400; letter-spacing:.04em; text-transform:none; color:var(--muted); }
+  #tool label { display:block; font:600 12px/1.3 var(--sans); letter-spacing:.055em;
+          text-transform:uppercase; color:var(--ink-soft); margin:26px 0 10px; }
+  /* :first-of-type also matched the first label inside every .row > div, which
+     stripped the top margin off half the form. Only the form's own first label
+     should lose it. */
+  #tool form > label:first-child { margin-top:0; }
+  #tool .row label { margin-top:0; }
+  #tool .row { margin-top:26px; }
+  #tool .hint { font-weight:400; letter-spacing:.01em; text-transform:none;
+          color:var(--muted); font-size:12.5px; }
 
   #tool input, #tool select {
-    width:100%; padding:11px 12px; color:var(--ink); background:var(--paper);
-    border:1.5px solid var(--line); border-radius:0; font-size:14px;
+    width:100%; padding:13px 14px; color:var(--ink); background:var(--paper);
+    border:1.5px solid var(--line); border-radius:0; font-size:15px;
     font-family:var(--sans); outline:none; appearance:none;
   }
   #tool select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23333' stroke-width='1.8' fill='none'/%3E%3C/svg%3E");
@@ -238,26 +243,26 @@
   #tool input[type=file] { padding:8px; cursor:pointer; color:var(--muted); }
   #tool input[type=file]::file-selector-button {
     margin-right:12px; padding:8px 13px; border:1.5px solid var(--line); cursor:pointer;
-    background:var(--ink); color:var(--paper); font:700 10px/1 var(--mono);
-    letter-spacing:.12em; text-transform:uppercase; }
+    background:var(--ink); color:var(--paper); font:600 12.5px/1 var(--sans);
+    letter-spacing:.03em; }
 
-  #tool .row { display:flex; gap:14px; } #tool .row > div { flex:1; min-width:0; }
+  #tool .row { display:flex; gap:18px; } #tool .row > div { flex:1; min-width:0; }
  @media (max-width:520px) { .row { flex-direction:column; gap:0; } }
   #tool .voicerow { display:flex; gap:10px; } #tool .voicerow select { flex:1; }
-  #tool .preview-btn { flex:0 0 auto; padding:0 14px; cursor:pointer;
+  #tool .preview-btn { flex:0 0 auto; padding:0 18px; cursor:pointer;
     background:transparent; color:var(--ink); border:1.5px solid var(--line);
-    font:700 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
-    white-space:nowrap; font-family:var(--mono); }
+    font:600 13px/1 var(--sans); letter-spacing:.02em;
+    white-space:nowrap; }
   #tool .preview-btn:hover:not(:disabled) { background:var(--ink); color:var(--paper); }
   #tool .preview-btn:disabled { opacity:.5; cursor:default; }
   #tool audio { width:100%; margin-top:12px; display:none; }
   #tool audio.show { display:block; }
 
   #tool .go {
-    margin-top:24px; width:100%; padding:15px; border:1.5px solid var(--line);
+    margin-top:32px; width:100%; padding:17px; border:1.5px solid var(--line);
     background:var(--accent); color:var(--accent-ink); cursor:pointer;
-    font:800 13px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase;
-    font-family:var(--mono); box-shadow:5px 5px 0 var(--ink);
+    font:700 16px/1 var(--sans); letter-spacing:.02em;
+    box-shadow:5px 5px 0 var(--ink);
     transition:transform .1s, box-shadow .1s;
   }
   #tool .go:hover:not(:disabled) { transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--ink); }
@@ -275,16 +280,15 @@
   #tool .results { margin-top:22px; display:none; }
   #tool .results h3 { font:900 18px/1 var(--display); letter-spacing:-.01em;
                 text-transform:uppercase; margin:0 0 4px; }
-  #tool .meta { color:var(--muted); font:600 11px/1.4 var(--mono); letter-spacing:.08em;
-          margin-bottom:14px; }
-  #tool .dl { display:flex; align-items:center; gap:12px; padding:13px; margin-top:10px;
+  #tool .meta { color:var(--muted); font:400 13px/1.5 var(--sans); letter-spacing:0;
+          margin-bottom:16px; }
+  #tool .dl { display:flex; align-items:center; gap:13px; padding:16px; margin-top:12px;
         background:var(--paper); border:1.5px solid var(--line); color:var(--ink);
         text-decoration:none; transition:transform .1s, box-shadow .1s; }
   #tool .dl:hover { transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
   #tool .dl .ico { font-size:18px; }
   #tool .dl .t { font-weight:700; font-size:14px; }
-  #tool .dl .d { color:var(--muted); font:600 10px/1.3 var(--mono); letter-spacing:.08em;
-           text-transform:uppercase; }
+  #tool .dl .d { color:var(--muted); font:400 12.5px/1.4 var(--sans); letter-spacing:0; }
   #tool .dl .arrow { margin-left:auto; font-family:var(--mono); }
 
   #tool .err { color:var(--err); margin-top:16px; display:none; white-space:pre-wrap;
@@ -296,8 +300,8 @@
   #tool .transcript { margin-top:14px; padding:13px; max-height:240px; overflow:auto;
     background:var(--paper); border:1.5px solid var(--line);
     font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
-  #tool .foot { text-align:center; color:var(--muted); font:600 10px/1.5 var(--mono);
-          letter-spacing:.12em; text-transform:uppercase; margin-top:22px; }
+  #tool .foot { text-align:center; color:var(--muted); font:400 12.5px/1.6 var(--sans);
+          letter-spacing:.01em; margin-top:28px; }
   #tool .steps { display:none; }
 </style>
 </head>
