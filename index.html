@@ -5,200 +5,359 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Book·Audio Suite</title>
 <style>
+  /* ============================================================
+     Riso / technical-manual palette, sampled from the reference:
+     paper #97A37F, vermilion #D94807.
+     ============================================================ */
   :root {
-    color-scheme: dark;
-    --bg:#0b0d12; --card:rgba(255,255,255,.035); --line:rgba(255,255,255,.09);
-    --fg:#eef1f7; --muted:#98a2b7; --field:#0e1119;
-    --a1:#8b7bff; --a2:#4aa8ff; --ok:#34d399; --err:#fb7185;
-    --grad:linear-gradient(135deg,var(--a1),var(--a2));
-    --glow1:rgba(139,123,255,.18); --glow2:rgba(74,168,255,.16);
-    --title:linear-gradient(90deg,#fff,#c9d4ff);
-    --file-btn:rgba(255,255,255,.08); --file-btn-h:rgba(255,255,255,.14);
-  }
-  :root[data-theme="light"] {
     color-scheme: light;
-    --bg:#f3f5fb; --card:rgba(255,255,255,.78); --line:rgba(12,22,44,.12);
-    --fg:#141824; --muted:#5b6474; --field:#ffffff;
-    --a1:#6f5cf0; --a2:#2f8fee; --ok:#059669; --err:#e11d48;
-    --glow1:rgba(139,123,255,.20); --glow2:rgba(74,168,255,.18);
-    --title:linear-gradient(90deg,#141824,#4a4fce);
-    --file-btn:rgba(12,22,44,.06); --file-btn-h:rgba(12,22,44,.12);
+    --paper:#97A37F;
+    --paper-2:#A2AD8C;
+    --panel:#B6BFA2;
+    --ink:#14160E;
+    --ink-soft:#2E3325;
+    --muted:#4E5541;
+    --line:#14160E;
+    --line-soft:rgba(20,22,14,.28);
+    --accent:#D94807;
+    --accent-ink:#FFF4EC;
+    --ok:#1F5D2E;
+    --err:#8E1D08;
+    --grain:.18;
+
+    --display:"Helvetica Neue","Arial Narrow",Helvetica,Arial,sans-serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
-  html { transition:background-color .25s; }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#161A12;
+    --paper-2:#1E2318;
+    --panel:#232920;
+    --ink:#DCE3CC;
+    --ink-soft:#B6C0A4;
+    --muted:#8A9578;
+    --line:#DCE3CC;
+    --line-soft:rgba(220,227,204,.25);
+    --accent:#FF6A2B;
+    --accent-ink:#160B05;
+    --ok:#7FBF7F;
+    --err:#FF8E70;
+    --grain:.10;
+  }
+
   * { box-sizing:border-box; }
-  html,body { min-height:100%; }
+  html { scroll-behavior:smooth; }
   body {
-    margin:0; color:var(--fg); background:var(--bg);
-    background-image:
-      radial-gradient(60rem 40rem at 15% -10%, var(--glow1), transparent 60%),
-      radial-gradient(50rem 40rem at 110% 10%, var(--glow2), transparent 55%);
-    background-attachment:fixed;
-    transition:background-color .25s, color .25s;
-    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased;
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.5 var(--sans); -webkit-font-smoothing:antialiased;
+    transition:background-color .3s, color .3s;
   }
-  .wrap { max-width:600px; margin:0 auto; padding:56px 20px 72px; }
-
-  /* Hero */
-  .brand { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:nowrap; }
-  .brand h1 { font-size:21px; white-space:nowrap; }
-  .brand .logo { width:38px; height:38px; font-size:19px; flex:0 0 auto; }
-  .theme-toggle {
-    margin-left:auto; width:40px; height:40px; border-radius:11px; font-size:18px;
-    display:grid; place-items:center; cursor:pointer; color:var(--fg);
-    background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px);
-    transition:transform .06s, border-color .15s, background .15s;
-  }
-  .theme-toggle:hover { border-color:var(--a2); }
-  .theme-toggle:active { transform:translateY(1px); }
-  .logo {
-    width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
-    font-size:22px; background:var(--grad);
-    box-shadow:0 8px 24px rgba(74,168,255,.35);
-  }
-  h1 {
-    font-size:27px; letter-spacing:-.02em; margin:0; font-weight:700;
-    background:var(--title);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  .sub { color:var(--muted); margin:2px 0 26px; font-size:15px; }
-
-  /* Card */
-  .card {
-    background:var(--card); border:1px solid var(--line); border-radius:18px;
-    padding:24px; backdrop-filter:blur(12px);
-    box-shadow:0 24px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+  /* Riso grain — the texture that sells the print look. */
+  body::after {
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
+    opacity:var(--grain); mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  label { display:block; font-size:12px; font-weight:600; letter-spacing:.04em;
-          text-transform:uppercase; color:var(--muted); margin:16px 0 7px; }
-  label:first-of-type { margin-top:0; }
-  .hint { font-weight:400; letter-spacing:0; text-transform:none; color:var(--muted); opacity:.8; }
-
-  input, select {
-    width:100%; padding:11px 13px; color:var(--fg); background:var(--field);
-    border:1px solid var(--line); border-radius:11px; font-size:14px; outline:none;
-    transition:border-color .15s, box-shadow .15s;
-    appearance:none;
+  /* ---------- fixed technical chrome ---------- */
+  .chrome {
+    position:fixed; left:0; right:0; z-index:20; pointer-events:none;
+    display:flex; align-items:center; gap:14px;
+    padding:10px 16px; font:600 10px/1 var(--mono);
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
   }
-  select { background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2398a2b7' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right 13px center; padding-right:34px; }
-  input:focus, select:focus { border-color:var(--a2); box-shadow:0 0 0 3px rgba(74,168,255,.18); }
-  input[type=file] { padding:9px; color:var(--muted); cursor:pointer; }
-  input[type=file]::file-selector-button {
-    margin-right:12px; padding:8px 14px; border:0; border-radius:8px; cursor:pointer;
-    background:var(--file-btn); color:var(--fg); font-weight:600; font-size:13px;
+  .chrome-top { top:0; border-bottom:1px solid var(--line-soft); background:var(--paper); }
+  .chrome-bot { bottom:0; border-top:1px solid var(--line-soft); background:var(--paper); }
+  .chrome .spacer { flex:1; }
+  .chrome .dim { color:var(--muted); }
+  .chrome button { pointer-events:auto; }
+  @media (max-width:640px){ .chrome .hide-sm { display:none; } }
+
+  .tglr {
+    border:1px solid var(--line); background:transparent; color:var(--ink);
+    font:600 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+    padding:6px 10px; cursor:pointer;
   }
-  input[type=file]::file-selector-button:hover { background:var(--file-btn-h); }
+  .tglr:hover { background:var(--ink); color:var(--paper); }
 
-  .row { display:flex; gap:14px; } .row > div { flex:1; min-width:0; }
-  /* Side-by-side fields get squeezed on a phone — stack them instead. */
-  @media (max-width:520px) { .row { flex-direction:column; gap:0; } }
-  .voicerow { display:flex; gap:10px; align-items:stretch; }
-  .voicerow select { flex:1; }
-  .preview-btn {
-    flex:0 0 auto; padding:0 16px; font-size:13px; font-weight:600; white-space:nowrap;
-    background:rgba(139,123,255,.12); color:#cfc8ff; border:1px solid rgba(139,123,255,.45);
-    border-radius:11px; cursor:pointer; transition:background .15s, transform .05s;
+  /* ---------- scroll stages ---------- */
+  #landing .scroller { position:relative; }
+  #landing .stage-track { height:190vh; position:relative; }
+  #landing .stage {
+    position:sticky; top:0; height:100vh;
+    display:grid; place-items:center; overflow:hidden;
   }
-  .preview-btn:hover:not(:disabled) { background:rgba(139,123,255,.22); }
-  .preview-btn:active { transform:translateY(1px); }
-  .preview-btn:disabled { opacity:.6; cursor:default; }
-  audio { width:100%; margin-top:12px; display:none; border-radius:11px; }
-  audio.show { display:block; }
 
-  .go {
-    margin-top:26px; width:100%; padding:14px; border:0; border-radius:12px;
-    font-size:15px; font-weight:700; letter-spacing:.01em; cursor:pointer; color:#0a0f1e;
-    background:var(--grad); box-shadow:0 12px 30px -8px rgba(74,168,255,.5);
-    transition:transform .06s, box-shadow .2s, filter .2s;
+  /* Stage 1 — marquee headline behind a centred plate */
+  #landing .marquee { position:absolute; inset:0; display:grid; align-content:center; gap:6px; }
+  #landing .m-row { display:flex; width:max-content; will-change:transform; }
+  #landing .m-row span {
+    font:900 clamp(64px,15vw,190px)/.88 var(--display);
+    letter-spacing:-.03em; text-transform:uppercase; white-space:nowrap;
+    padding-right:.22em;
   }
-  .go:hover:not(:disabled) { filter:brightness(1.06); box-shadow:0 16px 40px -8px rgba(74,168,255,.6); }
-  .go:active { transform:translateY(1px); }
-  .go:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+  #landing .m-row.outline span { -webkit-text-stroke:1.5px var(--ink); color:transparent; }
 
-  /* Progress */
-  .progress { margin-top:24px; display:none; }
-  .stage { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:9px; }
-  .stage b { color:var(--fg); font-weight:600; }
-  .bar { height:9px; background:var(--field); border:1px solid var(--line); border-radius:99px; overflow:hidden; }
-  .fill { height:100%; width:0%; border-radius:99px; background:var(--grad);
-          background-size:200% 100%; animation:flow 2s linear infinite; transition:width .5s ease; }
-  @keyframes flow { to { background-position:200% 0; } }
-
-  /* Results */
-  .results { margin-top:24px; display:none; }
-  .results h3 { margin:0 0 3px; font-size:15px; }
-  .meta { color:var(--muted); font-size:13px; margin-bottom:14px; }
-  .dl {
-    display:flex; align-items:center; gap:12px; padding:14px; margin-top:10px;
-    background:var(--field); border:1px solid var(--line); border-radius:12px;
-    color:var(--fg); text-decoration:none; transition:border-color .15s, transform .06s, background .15s;
+  #landing .plate {
+    position:relative; z-index:2; text-align:center; padding:26px 30px;
+    background:var(--paper); border:1.5px solid var(--line);
+    box-shadow:7px 7px 0 var(--ink);
+    max-width:min(520px,86vw);
   }
-  .dl:hover { border-color:var(--a2); background:rgba(74,168,255,.06); transform:translateY(-1px); }
-  .dl .ico { font-size:20px; }
-  .dl .t { font-weight:600; } .dl .d { color:var(--muted); font-size:12px; }
-  .dl .arrow { margin-left:auto; color:var(--muted); }
+  #landing .plate .eyebrow { font:600 10px/1 var(--mono); letter-spacing:.2em;
+                    text-transform:uppercase; color:var(--muted); }
+  #landing .plate h1 { font:900 clamp(30px,6vw,50px)/.94 var(--display); letter-spacing:-.03em;
+              text-transform:uppercase; margin:12px 0 10px; }
+  #landing .plate p { margin:0; color:var(--ink-soft); font-size:14.5px; }
 
-  .err { color:var(--err); margin-top:18px; display:none; white-space:pre-wrap; font-size:14px;
-         background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.3);
-         padding:12px 14px; border-radius:11px; }
-  .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:22px; opacity:.75; }
+  #landing .hint { position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
+          font:600 10px/1 var(--mono); letter-spacing:.2em; text-transform:uppercase;
+          color:var(--muted); display:flex; gap:8px; align-items:center; }
+  #landing .hint i { display:block; width:1px; height:22px; background:var(--muted);
+            animation:drop 1.6s ease-in-out infinite; }
+  @keyframes drop { 0%,100%{opacity:.2;transform:scaleY(.4)} 50%{opacity:1;transform:scaleY(1)} }
 
-  /* How it works */
-  .steps { display:flex; align-items:center; justify-content:center; gap:10px;
-           margin:0 0 20px; flex-wrap:wrap; }
-  .step { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
-  .step b { display:grid; place-items:center; width:20px; height:20px; border-radius:50%;
-            font-size:11px; font-weight:700; color:var(--fg);
-            background:var(--field); border:1px solid var(--line); }
-  .step-sep { color:var(--muted); opacity:.5; }
-  @media (max-width:520px) { .steps { display:none; } }
+  /* Stage 2 — waveform */
+  #landing .wave-wrap { position:absolute; inset:0; display:grid; place-items:center; }
+  #landing #wave { width:100%; height:52vh; display:block; }
+  #landing .wave-meta {
+    position:absolute; left:16px; bottom:64px; display:flex; gap:10px; align-items:center;
+    font:600 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  }
+  #landing .chip { border:1px solid var(--line); padding:5px 8px; }
+  #landing .chip.hot { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  #landing .wave-title {
+    position:absolute; top:12vh; left:0; right:0; text-align:center;
+    font:900 clamp(28px,6vw,64px)/.95 var(--display); letter-spacing:-.03em;
+    text-transform:uppercase; pointer-events:none;
+  }
 
-  /* Mode tabs */
-  .tabs { display:flex; gap:6px; padding:5px; margin-bottom:18px; border-radius:14px;
-          background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px); }
-  .tab { flex:1; padding:10px 12px; border:0; border-radius:10px; cursor:pointer;
-         background:transparent; color:var(--muted); font-size:14px; font-weight:600;
-         font-family:inherit; transition:background .15s, color .15s; }
-  .tab:hover { color:var(--fg); }
-  .tab.active { background:var(--grad); color:#0a0f1e;
-                box-shadow:0 8px 20px -8px rgba(74,168,255,.5); }
-  .mode { display:none; } .mode.active { display:block; }
-  .note { margin-top:14px; padding:11px 13px; border-radius:11px; font-size:13px;
-          background:rgba(139,123,255,.10); border:1px solid rgba(139,123,255,.30);
-          color:var(--fg); }
-  .note.warn { background:rgba(251,113,133,.08); border-color:rgba(251,113,133,.30); }
-  .transcript { margin-top:14px; padding:13px; max-height:230px; overflow:auto;
-                background:var(--field); border:1px solid var(--line); border-radius:11px;
-                font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
+  /* ---------- choose ---------- */
+  #landing .choose { padding:96px 20px 120px; max-width:1000px; margin:0 auto; }
+  #landing .choose h2 { font:900 clamp(26px,5vw,44px)/.95 var(--display); letter-spacing:-.03em;
+               text-transform:uppercase; margin:0 0 6px; text-align:center; }
+  #landing .choose .lede { text-align:center; color:var(--ink-soft); margin:0 0 34px; }
+  #landing .picks { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:720px){ .picks { grid-template-columns:1fr; } }
+  #landing .pick {
+    text-align:left; cursor:pointer; padding:24px; font-family:inherit;
+    background:var(--panel); color:var(--ink);
+    border:1.5px solid var(--line); box-shadow:7px 7px 0 var(--ink);
+    transition:transform .12s, box-shadow .12s, background .15s;
+  }
+  #landing .pick:hover { transform:translate(-3px,-3px); box-shadow:10px 10px 0 var(--ink); }
+  #landing .pick:active { transform:translate(2px,2px); box-shadow:4px 4px 0 var(--ink); }
+  #landing .pick .num { font:600 10px/1 var(--mono); letter-spacing:.2em; color:var(--muted); }
+  #landing .pick h3 { font:900 clamp(22px,3.4vw,34px)/.95 var(--display); letter-spacing:-.02em;
+             text-transform:uppercase; margin:12px 0 8px; }
+  #landing .pick p { margin:0 0 16px; color:var(--ink-soft); font-size:14px; }
+  #landing .pick .go-tag { display:inline-block; background:var(--accent); color:var(--accent-ink);
+                  font:700 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+                  padding:8px 12px; }
+
+  /* ============================================================
+     The tool, restyled to match: paper panels, hard borders,
+     offset shadows, vermilion actions. All element ids unchanged.
+     ============================================================ */
+  #tool { display:none; }
+  #tool.on { display:block; }
+  #tool .wrap { max-width:660px; margin:0 auto; padding:76px 20px 96px; }
+
+  #tool .toolbar { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  #tool .back {
+    border:1.5px solid var(--line); background:transparent; color:var(--ink);
+    font:700 10px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+    padding:9px 12px; cursor:pointer; font-family:var(--mono);
+  }
+  #tool .back:hover { background:var(--ink); color:var(--paper); }
+  #tool .brand { display:flex; align-items:baseline; gap:10px; flex:1; min-width:0; }
+  #tool .brand h1 { font:900 20px/1 var(--display); letter-spacing:-.02em;
+              text-transform:uppercase; margin:0; white-space:nowrap; }
+  #tool .sub { color:var(--ink-soft); margin:2px 0 22px; font-size:14.5px; }
+
+  #tool .tabs { display:flex; gap:0; margin-bottom:20px; border:1.5px solid var(--line); }
+  #tool .tab { flex:1; padding:12px; border:0; cursor:pointer; background:transparent;
+         color:var(--muted); font:700 11px/1 var(--mono); letter-spacing:.16em;
+         text-transform:uppercase; font-family:var(--mono); }
+  #tool .tab + .tab { border-left:1.5px solid var(--line); }
+  #tool .tab:hover { color:var(--ink); }
+  #tool .tab.active { background:var(--ink); color:var(--paper); }
+  #tool .mode { display:none; } #tool .mode.active { display:block; }
+
+  #tool .card { background:var(--panel); border:1.5px solid var(--line);
+          box-shadow:7px 7px 0 var(--ink); padding:22px; }
+
+  #tool label { display:block; font:700 10px/1 var(--mono); letter-spacing:.16em;
+          text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  #tool label:first-of-type { margin-top:0; }
+  #tool .hint { font-weight:400; letter-spacing:.04em; text-transform:none; color:var(--muted); }
+
+  #tool input, #tool select {
+    width:100%; padding:11px 12px; color:var(--ink); background:var(--paper);
+    border:1.5px solid var(--line); border-radius:0; font-size:14px;
+    font-family:var(--sans); outline:none; appearance:none;
+  }
+  #tool select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23333' stroke-width='1.8' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+  #tool input:focus, #tool select:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  #tool input[type=file] { padding:8px; cursor:pointer; color:var(--muted); }
+  #tool input[type=file]::file-selector-button {
+    margin-right:12px; padding:8px 13px; border:1.5px solid var(--line); cursor:pointer;
+    background:var(--ink); color:var(--paper); font:700 10px/1 var(--mono);
+    letter-spacing:.12em; text-transform:uppercase; }
+
+  #tool .row { display:flex; gap:14px; } #tool .row > div { flex:1; min-width:0; }
+ @media (max-width:520px) { .row { flex-direction:column; gap:0; } }
+  #tool .voicerow { display:flex; gap:10px; } #tool .voicerow select { flex:1; }
+  #tool .preview-btn { flex:0 0 auto; padding:0 14px; cursor:pointer;
+    background:transparent; color:var(--ink); border:1.5px solid var(--line);
+    font:700 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+    white-space:nowrap; font-family:var(--mono); }
+  #tool .preview-btn:hover:not(:disabled) { background:var(--ink); color:var(--paper); }
+  #tool .preview-btn:disabled { opacity:.5; cursor:default; }
+  #tool audio { width:100%; margin-top:12px; display:none; }
+  #tool audio.show { display:block; }
+
+  #tool .go {
+    margin-top:24px; width:100%; padding:15px; border:1.5px solid var(--line);
+    background:var(--accent); color:var(--accent-ink); cursor:pointer;
+    font:800 13px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase;
+    font-family:var(--mono); box-shadow:5px 5px 0 var(--ink);
+    transition:transform .1s, box-shadow .1s;
+  }
+  #tool .go:hover:not(:disabled) { transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--ink); }
+  #tool .go:active:not(:disabled) { transform:translate(2px,2px); box-shadow:2px 2px 0 var(--ink); }
+  #tool .go:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+
+  #tool .progress { margin-top:22px; display:none; }
+  #tool .stage-row, #tool .stage { display:flex; justify-content:space-between;
+    font:700 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:8px; }
+  #tool .stage b { color:var(--ink); }
+  #tool .bar { height:14px; background:var(--paper); border:1.5px solid var(--line); }
+  #tool .fill { height:100%; width:0%; background:var(--accent); transition:width .5s ease; }
+
+  #tool .results { margin-top:22px; display:none; }
+  #tool .results h3 { font:900 18px/1 var(--display); letter-spacing:-.01em;
+                text-transform:uppercase; margin:0 0 4px; }
+  #tool .meta { color:var(--muted); font:600 11px/1.4 var(--mono); letter-spacing:.08em;
+          margin-bottom:14px; }
+  #tool .dl { display:flex; align-items:center; gap:12px; padding:13px; margin-top:10px;
+        background:var(--paper); border:1.5px solid var(--line); color:var(--ink);
+        text-decoration:none; transition:transform .1s, box-shadow .1s; }
+  #tool .dl:hover { transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
+  #tool .dl .ico { font-size:18px; }
+  #tool .dl .t { font-weight:700; font-size:14px; }
+  #tool .dl .d { color:var(--muted); font:600 10px/1.3 var(--mono); letter-spacing:.08em;
+           text-transform:uppercase; }
+  #tool .dl .arrow { margin-left:auto; font-family:var(--mono); }
+
+  #tool .err { color:var(--err); margin-top:16px; display:none; white-space:pre-wrap;
+         font-size:14px; background:var(--paper); border:1.5px solid var(--err);
+         padding:12px; }
+  #tool .note { margin-top:14px; padding:11px 12px; font-size:13px;
+          background:var(--paper); border:1.5px solid var(--line); }
+  #tool .note.warn { border-color:var(--err); color:var(--err); }
+  #tool .transcript { margin-top:14px; padding:13px; max-height:240px; overflow:auto;
+    background:var(--paper); border:1.5px solid var(--line);
+    font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
+  #tool .foot { text-align:center; color:var(--muted); font:600 10px/1.5 var(--mono);
+          letter-spacing:.12em; text-transform:uppercase; margin-top:22px; }
+  #tool .steps { display:none; }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <div class="brand">
-    <div class="logo">🎧</div>
-    <h1>Book·Audio Suite</h1>
-    <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
-  </div>
-  <p class="sub" id="subtitle">Turn a PDF into an audiobook you can listen to. Pick a voice, press go, download it.</p>
+<div class="chrome chrome-top">
+  <span>Book·Audio Suite</span>
+  <span class="dim hide-sm">HF-S 800</span>
+  <span class="spacer"></span>
+  <span class="dim hide-sm">Type 1 · Normal position</span>
+  <button type="button" class="tglr" id="themeToggle">Invert</button>
+</div>
 
-  <div class="steps">
-    <span class="step"><b>1</b> Upload a file</span>
-    <span class="step-sep">→</span>
-    <span class="step"><b>2</b> Pick your options</span>
-    <span class="step-sep">→</span>
-    <span class="step"><b>3</b> Download it</span>
+<div class="chrome chrome-bot">
+  <span class="dim">NDFR-00 NMB 00001</span>
+  <span class="dim hide-sm">Local build · no sign-up</span>
+  <span class="spacer"></span>
+  <span class="dim">000000003214</span>
+</div>
+
+<!-- ===================== LANDING ===================== -->
+<main id="landing">
+
+  <!-- Stage 1 -->
+  <div class="stage-track">
+    <section class="stage" id="stage1">
+      <div class="marquee" id="marquee">
+        <div class="m-row" data-speed="-1"><span>Read it · Hear it · Read it · Hear it · Read it · Hear it ·</span><span>Read it · Hear it · Read it · Hear it · Read it · Hear it ·</span></div>
+        <div class="m-row outline" data-speed="1"><span>Books into audio · Audio into words ·</span><span>Books into audio · Audio into words ·</span></div>
+        <div class="m-row" data-speed="-1.6"><span>Upload · Convert · Download ·</span><span>Upload · Convert · Download ·</span></div>
+      </div>
+
+      <div class="plate">
+        <div class="eyebrow">Two machines, one desk</div>
+        <h1>Turn pages into sound.<br>Turn sound into pages.</h1>
+        <p>Drop in a PDF and get an audiobook. Drop in a recording and get a
+           transcript. Free, no sign-up, downloads the moment it's done.</p>
+      </div>
+
+      <div class="hint"><i></i> Scroll <i></i></div>
+    </section>
   </div>
 
-  <div class="tabs">
-    <button type="button" class="tab active" id="tabTts" data-mode="tts">📖 → 🎧 Book → Audio</button>
-    <button type="button" class="tab" id="tabStt" data-mode="stt">🎙️ → 📝 Audio → Text</button>
+  <!-- Stage 2 -->
+  <div class="stage-track">
+    <section class="stage" id="stage2">
+      <div class="wave-wrap"><canvas id="wave"></canvas></div>
+      <div class="wave-title">Every word, rendered</div>
+      <div class="wave-meta">
+        <span class="chip" id="waveTime">00:00:00</span>
+        <span class="chip hot">REC</span>
+        <span class="chip">mp3 · 320kb</span>
+      </div>
+    </section>
   </div>
 
-  <div class="card mode active" id="modeTts">
+  <!-- Choose -->
+  <section class="choose" id="choose">
+    <h2>Pick your machine</h2>
+    <p class="lede">Both are free and run right here. You can switch any time.</p>
+    <div class="picks">
+      <button type="button" class="pick" data-pick="tts">
+        <div class="num">01 — Text to speech</div>
+        <h3>Book → Audio</h3>
+        <p>Upload a PDF, choose from 47 voices, and download a chaptered
+           audiobook that plays anywhere.</p>
+        <span class="go-tag">Start →</span>
+      </button>
+      <button type="button" class="pick" data-pick="stt">
+        <div class="num">02 — Speech to text</div>
+        <h3>Audio → Text</h3>
+        <p>Upload a recording and download a punctuated transcript with
+           timestamps, transcribed on this machine.</p>
+        <span class="go-tag">Start →</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== TOOL ===================== -->
+<div id="tool">
+  <div class="wrap">
+    <div class="toolbar">
+      <button type="button" class="back" id="backBtn">← Back</button>
+      <div class="brand"><h1>Book·Audio Suite</h1></div>
+    </div>
+    <p class="sub" id="subtitle">Turn a PDF into an audiobook you can listen to.</p>
+
+    <div class="tabs">
+      <button type="button" class="tab active" id="tabTts" data-mode="tts">Book → Audio</button>
+      <button type="button" class="tab" id="tabStt" data-mode="stt">Audio → Text</button>
+    </div>
+
+<div class="card mode active" id="modeTts">
     <form id="form">
       <label>Your PDF <span class="hint">— a book, a paper, anything with text</span></label>
       <input type="file" id="pdf" accept="application/pdf" required>
@@ -323,10 +482,12 @@
     <div class="err" id="sttErr"></div>
   </div>
 
-  <p class="foot" id="footNote">Free · no sign-up · your download is ready as soon as it finishes</p>
+      <p class="foot" id="footNote">Free · no sign-up · download ready the moment it finishes</p>
+  </div>
 </div>
 
 <script>
+
 const $ = id => document.getElementById(id);
 
 // --- Light / dark theme, persisted across visits.
@@ -334,10 +495,10 @@ const root = document.documentElement;
 function applyTheme(t) {
   root.setAttribute("data-theme", t);
   localStorage.setItem("theme", t);
-  $("themeToggle").textContent = t === "light" ? "☀️" : "🌙";
+  $("themeToggle").textContent = t === "light" ? "Invert" : "Revert";
 }
-applyTheme(localStorage.getItem("theme")
-  || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+// Default to the light "paper" print; dark is an explicit choice.
+applyTheme(localStorage.getItem("theme") || "light");
 $("themeToggle").addEventListener("click", () =>
   applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light"));
 
@@ -549,6 +710,147 @@ async function showSttResults(jobId, j) {
     box.textContent = await (await fetch(`/jobs/${jobId}/transcript.txt`)).text();
   } catch { box.textContent = "(preview unavailable — use the download below)"; }
 }
+// ============================================================
+// Landing: scroll choreography + the pick -> tool transition.
+// No animation library — a scroll listener and one canvas.
+// ============================================================
+const $$ = id => document.getElementById(id);
+
+// --- Stage 1: marquee rows drift, and drift faster as you scroll -------------
+const mRows = Array.from(document.querySelectorAll(".m-row"));
+let scrollY = 0, drift = 0;
+
+// --- Stage 2: waveform ------------------------------------------------------
+const wave = $$("wave");
+const wctx = wave.getContext("2d");
+let bars = [], waveProgress = 0;
+
+function sizeWave() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = wave.getBoundingClientRect();
+  wave.width = Math.max(1, r.width * dpr);
+  wave.height = Math.max(1, r.height * dpr);
+  wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const count = Math.max(28, Math.floor(r.width / 11));
+  // A fixed pseudo-waveform: stable across frames so it reads as one recording.
+  bars = Array.from({ length: count }, (_, i) => {
+    const a = Math.sin(i * 0.34) * 0.5 + Math.sin(i * 0.11) * 0.32 + Math.sin(i * 0.77) * 0.18;
+    return 0.14 + Math.abs(a) * 0.8;
+  });
+}
+
+function readCss(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawWave(t) {
+  const r = wave.getBoundingClientRect();
+  const w = r.width, h = r.height;
+  wctx.clearRect(0, 0, w, h);
+  if (!bars.length) return;
+
+  const ink = readCss("--ink") || "#14160E";
+  const accent = readCss("--accent") || "#D94807";
+  const gap = w / bars.length;
+  const bw = Math.max(2, gap * 0.55);
+  const playX = w * waveProgress;
+
+  bars.forEach((amp, i) => {
+    const x = i * gap + (gap - bw) / 2;
+    // gentle life, plus a bump as the playhead passes
+    const near = 1 - Math.min(1, Math.abs(x - playX) / (w * 0.12));
+    const live = 1 + Math.sin(t / 420 + i * 0.5) * 0.06 + near * 0.5;
+    const bh = Math.min(h, amp * h * 0.78 * live);
+    wctx.fillStyle = x < playX ? accent : ink;
+    wctx.globalAlpha = x < playX ? 1 : 0.85;
+    wctx.fillRect(x, (h - bh) / 2, bw, bh);
+  });
+
+  // playhead
+  wctx.globalAlpha = 1;
+  wctx.fillStyle = accent;
+  wctx.fillRect(playX - 1, 0, 2, h);
+  wctx.fillRect(playX - 6, 0, 12, 6);
+  wctx.fillRect(playX - 6, h - 6, 12, 6);
+}
+
+function stageProgress(el) {
+  // 0 while the stage is entering, 1 once its track has scrolled past.
+  const track = el.parentElement;
+  const rect = track.getBoundingClientRect();
+  const total = rect.height - window.innerHeight;
+  if (total <= 0) return 0;
+  return Math.max(0, Math.min(1, -rect.top / total));
+}
+
+let ticking = false;
+function onScroll() {
+  scrollY = window.scrollY;
+  if (!ticking) {
+    ticking = true;
+    requestAnimationFrame(() => {
+      const s1 = $$("stage1"), s2 = $$("stage2");
+      if (s1) {
+        const p = stageProgress(s1);
+        // the plate recedes as you scroll through stage one
+        const plate = document.querySelector(".plate");
+        if (plate) {
+          plate.style.opacity = String(1 - p * 1.15);
+          plate.style.transform = `scale(${1 - p * 0.06})`;
+        }
+      }
+      if (s2) {
+        waveProgress = stageProgress(s2);
+        // Fade the whole stage out at the end of its track, otherwise the
+        // chips and bar tips bleed into the section below.
+        const fade = waveProgress > 0.82 ? 1 - (waveProgress - 0.82) / 0.18 : 1;
+        s2.style.opacity = String(Math.max(0, fade));
+        const secs = Math.floor(waveProgress * 36);
+        const el = $$("waveTime");
+        if (el) el.textContent =
+          "00:" + String(Math.floor(secs / 60)).padStart(2, "0") +
+          ":" + String(secs % 60).padStart(2, "0");
+      }
+      ticking = false;
+    });
+  }
+}
+
+function loop(t) {
+  drift -= 0.35;
+  mRows.forEach(row => {
+    const speed = parseFloat(row.dataset.speed || "1");
+    const w = row.firstElementChild.offsetWidth || 1;
+    const x = ((drift * speed - scrollY * 0.25 * speed) % w + w) % w;
+    row.style.transform = `translateX(${-x}px)`;
+  });
+  drawWave(t);
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("resize", () => { sizeWave(); onScroll(); });
+sizeWave(); onScroll(); requestAnimationFrame(loop);
+
+// --- pick a machine -> show the tool ----------------------------------------
+document.querySelectorAll(".pick").forEach(btn => {
+  btn.addEventListener("click", () => openTool(btn.dataset.pick));
+});
+
+function openTool(mode) {
+  $$("landing").style.display = "none";
+  $$("tool").classList.add("on");
+  switchMode(mode);                       // reuses the existing tab logic
+  window.scrollTo(0, 0);
+  document.body.style.overflow = "";
+}
+
+$$("backBtn").addEventListener("click", () => {
+  $$("tool").classList.remove("on");
+  $$("landing").style.display = "";
+  window.scrollTo(0, 0);
+  sizeWave();
+});
 </script>
 </body>
 </html>
