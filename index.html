@@ -83,7 +83,7 @@
 
   /* ---------- scroll stages ---------- */
   #landing .scroller { position:relative; }
-  #landing .stage-track { height:190vh; position:relative; }
+  #landing .stage-track { height:155vh; position:relative; }
   #landing .stage {
     position:sticky; top:0; height:100vh;
     display:grid; place-items:center; overflow:hidden;
@@ -134,14 +134,18 @@
   }
 
   /* ---------- choose ---------- */
-  #landing .choose { padding:96px 20px 120px; max-width:1000px; margin:0 auto; }
+  #landing .choose {
+    min-height:100vh; display:grid; align-content:center;
+    padding:96px 20px 88px; max-width:1040px; margin:0 auto;
+  }
   #landing .choose h2 { font:900 clamp(26px,5vw,44px)/.95 var(--display); letter-spacing:-.03em;
                text-transform:uppercase; margin:0 0 6px; text-align:center; }
   #landing .choose .lede { text-align:center; color:var(--ink-soft); margin:0 0 34px; }
   #landing .picks { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media (max-width:720px){ .picks { grid-template-columns:1fr; } }
   #landing .pick {
-    text-align:left; cursor:pointer; padding:24px; font-family:inherit;
+    text-align:left; cursor:pointer; padding:30px 28px 28px; font-family:inherit;
+    display:flex; flex-direction:column; min-height:320px;
     background:var(--panel); color:var(--ink);
     border:1.5px solid var(--line); box-shadow:7px 7px 0 var(--ink);
     transition:transform .12s, box-shadow .12s, background .15s;
@@ -151,7 +155,18 @@
   #landing .pick .num { font:600 10px/1 var(--mono); letter-spacing:.2em; color:var(--muted); }
   #landing .pick h3 { font:900 clamp(22px,3.4vw,34px)/.95 var(--display); letter-spacing:-.02em;
              text-transform:uppercase; margin:12px 0 8px; }
-  #landing .pick p { margin:0 0 16px; color:var(--ink-soft); font-size:14px; }
+  #landing .pick p { margin:0 0 22px; color:var(--ink-soft); font-size:14.5px; }
+  #landing .pick .specs { margin:0 0 20px; padding:0; list-style:none;
+    border-top:1px solid var(--line-soft); }
+  #landing .pick .specs li { display:flex; justify-content:space-between; gap:10px;
+    padding:7px 0; border-bottom:1px solid var(--line-soft);
+    font:600 10px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); }
+  #landing .pick .specs li b { color:var(--ink); font-weight:700; }
+  #landing .pick .go-tag { margin-top:auto; align-self:flex-start; }
+  #landing .closing { text-align:center; margin:34px auto 0; max-width:56ch;
+    font:600 10px/1.7 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); }
   #landing .pick .go-tag { display:inline-block; background:var(--accent); color:var(--accent-ink);
                   font:700 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
                   padding:8px 12px; }
@@ -330,6 +345,11 @@
         <h3>Book → Audio</h3>
         <p>Upload a PDF, choose from 47 voices, and download a chaptered
            audiobook that plays anywhere.</p>
+        <ul class="specs">
+          <li>Input <b>PDF</b></li>
+          <li>Output <b>MP3 · M4B</b></li>
+          <li>Voices <b>47</b></li>
+        </ul>
         <span class="go-tag">Start →</span>
       </button>
       <button type="button" class="pick" data-pick="stt">
@@ -337,9 +357,16 @@
         <h3>Audio → Text</h3>
         <p>Upload a recording and download a punctuated transcript with
            timestamps, transcribed on this machine.</p>
+        <ul class="specs">
+          <li>Input <b>MP3 · WAV · M4A · MP4</b></li>
+          <li>Output <b>TXT · MD · JSON</b></li>
+          <li>Runs <b>On device</b></li>
+        </ul>
         <span class="go-tag">Start →</span>
       </button>
     </div>
+    <p class="closing">No account. Nothing sent to anyone else. Both machines run
+       on this computer and hand you the file the moment they're done.</p>
   </section>
 </main>
 
