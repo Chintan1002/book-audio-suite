@@ -92,7 +92,9 @@
   }
   input[type=file]::file-selector-button:hover { background:var(--file-btn-h); }
 
-  .row { display:flex; gap:14px; } .row > div { flex:1; }
+  .row { display:flex; gap:14px; } .row > div { flex:1; min-width:0; }
+  /* Side-by-side fields get squeezed on a phone — stack them instead. */
+  @media (max-width:520px) { .row { flex-direction:column; gap:0; } }
   .voicerow { display:flex; gap:10px; align-items:stretch; }
   .voicerow select { flex:1; }
   .preview-btn {
@@ -144,42 +146,15 @@
          padding:12px 14px; border-radius:11px; }
   .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:22px; opacity:.75; }
 
-  /* Landing */
-  .landing { max-width:600px; margin:0 auto; padding:72px 20px 80px; text-align:center; }
-  .landing .logo { width:60px; height:60px; font-size:30px; margin:0 auto 22px;
-                   border-radius:16px; }
-  .landing h1 { font-size:clamp(30px,6vw,42px); justify-content:center; margin-bottom:12px; }
-  .landing .tagline { color:var(--muted); font-size:17px; margin:0 auto 34px; max-width:44ch; }
-  .features { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:34px; text-align:left; }
-  @media (max-width:560px) { .features { grid-template-columns:1fr; } }
-  .feature { padding:18px; border-radius:14px; background:var(--card);
-             border:1px solid var(--line); backdrop-filter:blur(12px); }
-  .feature .fi { font-size:22px; display:block; margin-bottom:9px; }
-  .feature h3 { margin:0 0 5px; font-size:15px; }
-  .feature p { margin:0; font-size:13.5px; color:var(--muted); line-height:1.5; }
-  .signin-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
-  .signin-note { font-size:12.5px; color:var(--muted); max-width:40ch; line-height:1.55; }
-  #gsiButton { min-height:44px; }
-
-  /* Account chip */
-  .account { display:flex; align-items:center; gap:8px; margin-left:auto; flex:0 0 auto; }
-  .avatar { width:28px; height:28px; border-radius:50%; border:1px solid var(--line);
-            flex:0 0 auto; }
-  .who { font-size:13px; color:var(--muted); max-width:110px; overflow:hidden;
-         text-overflow:ellipsis; white-space:nowrap; }
-  .signout { background:none; border:0; color:var(--muted); font-size:12.5px;
-             cursor:pointer; font-family:inherit; padding:4px 6px; border-radius:6px;
-             white-space:nowrap; flex:0 0 auto; }
-  .signout:hover { color:var(--fg); background:var(--field); }
-  .lib-btn, .theme-toggle { flex:0 0 auto; }
-  .theme-toggle { margin-left:0; }
-  /* On a narrow screen the name and the library label are the first to go. */
-  @media (max-width:600px) {
-    .who { display:none; }
-    .brand h1 { font-size:18px; }
-    .lib-btn { font-size:0; padding:0 12px; }
-    .lib-btn::before { content:"📂"; font-size:15px; }
-  }
+  /* How it works */
+  .steps { display:flex; align-items:center; justify-content:center; gap:10px;
+           margin:0 0 20px; flex-wrap:wrap; }
+  .step { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
+  .step b { display:grid; place-items:center; width:20px; height:20px; border-radius:50%;
+            font-size:11px; font-weight:700; color:var(--fg);
+            background:var(--field); border:1px solid var(--line); }
+  .step-sep { color:var(--muted); opacity:.5; }
+  @media (max-width:520px) { .steps { display:none; } }
 
   /* Mode tabs */
   .tabs { display:flex; gap:6px; padding:5px; margin-bottom:18px; border-radius:14px;
@@ -195,27 +170,6 @@
           background:rgba(139,123,255,.10); border:1px solid rgba(139,123,255,.30);
           color:var(--fg); }
   .note.warn { background:rgba(251,113,133,.08); border-color:rgba(251,113,133,.30); }
-  /* Drive save */
-  .savebar { display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap; }
-  .drive-btn {
-    display:inline-flex; align-items:center; gap:8px; padding:11px 15px;
-    border-radius:11px; cursor:pointer; font-size:14px; font-weight:600;
-    font-family:inherit; color:var(--fg);
-    background:var(--field); border:1px solid var(--line);
-    transition:border-color .15s, background .15s, transform .06s;
-  }
-  .drive-btn:hover:not(:disabled) { border-color:var(--a2); background:rgba(74,168,255,.06); }
-  .drive-btn:active:not(:disabled) { transform:translateY(1px); }
-  .drive-btn:disabled { opacity:.55; cursor:default; }
-  .drive-status { font-size:13px; color:var(--muted); }
-  .drive-status.ok { color:var(--ok); }
-  .drive-status.bad { color:var(--err); }
-  .lib-btn {
-    padding:0 13px; height:40px; border-radius:11px; font-size:13px; font-weight:600;
-    font-family:inherit; cursor:pointer; white-space:nowrap; color:var(--fg);
-    background:var(--card); border:1px solid var(--line); backdrop-filter:blur(12px);
-  }
-  .lib-btn:hover { border-color:var(--a2); }
   .transcript { margin-top:14px; padding:13px; max-height:230px; overflow:auto;
                 background:var(--field); border:1px solid var(--line); border-radius:11px;
                 font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
@@ -223,51 +177,21 @@
 </head>
 <body>
 
-<!-- Shown until the user signs in. The tool itself lives in #app below. -->
-<div class="landing" id="landing">
-  <div class="logo">🎧</div>
-  <h1>Book·Audio Suite</h1>
-  <p class="tagline">Turn a PDF into a narrated audiobook, or a recording into a
-     clean transcript — then keep it in your own Google Drive.</p>
-
-  <div class="features">
-    <div class="feature">
-      <span class="fi">📖 → 🎧</span>
-      <h3>Book → Audio</h3>
-      <p>Upload a PDF, pick from 47 natural voices, and get a chaptered
-         audiobook you can play anywhere.</p>
-    </div>
-    <div class="feature">
-      <span class="fi">🎙️ → 📝</span>
-      <h3>Audio → Text</h3>
-      <p>Upload a recording and get a punctuated transcript with timestamps,
-         transcribed on-device.</p>
-    </div>
-  </div>
-
-  <div class="signin-wrap">
-    <div id="gsiButton"></div>
-    <p class="signin-note" id="signinNote">
-      We never store your files. Anything you save goes to your own Google
-      Drive, and we only ask for Drive access when you choose to save.
-    </p>
-  </div>
-</div>
-
-<div class="wrap" id="app" style="display:none">
+<div class="wrap">
   <div class="brand">
     <div class="logo">🎧</div>
     <h1>Book·Audio Suite</h1>
-    <div class="account" id="account" style="display:none">
-      <img class="avatar" id="avatar" alt="" referrerpolicy="no-referrer">
-      <span class="who" id="who"></span>
-      <button type="button" class="signout" id="signOutBtn">Sign out</button>
-    </div>
-    <button type="button" id="libraryBtn" class="lib-btn" style="display:none"
-            title="Open your Book·Audio Suite folder in Google Drive">📂 My library</button>
     <button type="button" id="themeToggle" class="theme-toggle" title="Toggle light / dark">🌙</button>
   </div>
-  <p class="sub" id="subtitle">Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.</p>
+  <p class="sub" id="subtitle">Turn a PDF into an audiobook you can listen to. Pick a voice, press go, download it.</p>
+
+  <div class="steps">
+    <span class="step"><b>1</b> Upload a file</span>
+    <span class="step-sep">→</span>
+    <span class="step"><b>2</b> Pick your options</span>
+    <span class="step-sep">→</span>
+    <span class="step"><b>3</b> Download it</span>
+  </div>
 
   <div class="tabs">
     <button type="button" class="tab active" id="tabTts" data-mode="tts">📖 → 🎧 Book → Audio</button>
@@ -276,7 +200,7 @@
 
   <div class="card mode active" id="modeTts">
     <form id="form">
-      <label>PDF file</label>
+      <label>Your PDF <span class="hint">— a book, a paper, anything with text</span></label>
       <input type="file" id="pdf" accept="application/pdf" required>
 
       <label>Voice <span class="hint">— pick one, then Preview to hear it</span></label>
@@ -307,11 +231,11 @@
       </div>
 
       <div class="row">
-        <div><label>Title <span class="hint">(optional)</span></label><input id="title" placeholder="from filename"></div>
+        <div><label>Name it <span class="hint">(optional)</span></label><input id="title" placeholder="from file name"></div>
         <div><label>Author <span class="hint">(optional)</span></label><input id="author"></div>
       </div>
 
-      <button type="submit" id="go" class="go">✨ Create audiobook</button>
+      <button type="submit" id="go" class="go">✨ Make my audiobook</button>
     </form>
 
     <div class="progress" id="progress">
@@ -331,10 +255,6 @@
       <a class="dl" id="dlPdf" href="#" style="display:none">
         <span class="ico">📄</span><span><div class="t">Text PDF</div><div class="d">searchable text from OCR</div></span><span class="arrow">↓</span>
       </a>
-      <div class="savebar" id="ttsSaveBar" style="display:none">
-        <button type="button" class="drive-btn" id="ttsSaveBtn">▲ Save to my Drive</button>
-        <span class="drive-status" id="ttsSaveStatus"></span>
-      </div>
     </div>
 
     <div class="err" id="err"></div>
@@ -342,12 +262,12 @@
 
   <div class="card mode" id="modeStt">
     <form id="sttForm">
-      <label>Audio file <span class="hint">— mp3, wav, m4a, flac, ogg, mp4…</span></label>
+      <label>Your recording <span class="hint">— mp3, wav, m4a, flac, ogg, mp4…</span></label>
       <input type="file" id="audio" accept="audio/*,video/mp4,.m4a,.m4b,.opus,.oga" required>
 
       <div class="row">
         <div>
-          <label>Model <span class="hint">(accuracy vs speed)</span></label>
+          <label>Quality <span class="hint">(higher is slower)</span></label>
           <select id="sttModel">
             <option value="tiny">Tiny — fastest</option>
             <option value="base" selected>Base — balanced</option>
@@ -372,10 +292,10 @@
         </div>
       </div>
 
-      <label>Title <span class="hint">(optional — names the downloads)</span></label>
-      <input id="sttTitle" placeholder="from filename">
+      <label>Name it <span class="hint">(optional — used for the file name)</span></label>
+      <input id="sttTitle" placeholder="from file name">
 
-      <button type="submit" id="sttGo" class="go">📝 Transcribe audio</button>
+      <button type="submit" id="sttGo" class="go">📝 Get my transcript</button>
     </form>
 
     <div class="note warn" id="sttUnavailable" style="display:none"></div>
@@ -398,19 +318,14 @@
       <a class="dl" id="dlJson" href="#">
         <span class="ico">⏱️</span><span><div class="t">Timestamps (.json)</div><div class="d">segments + word timings</div></span><span class="arrow">↓</span>
       </a>
-      <div class="savebar" id="sttSaveBar" style="display:none">
-        <button type="button" class="drive-btn" id="sttSaveBtn">▲ Save to my Drive</button>
-        <span class="drive-status" id="sttSaveStatus"></span>
-      </div>
     </div>
 
     <div class="err" id="sttErr"></div>
   </div>
 
-  <p class="foot" id="footNote">Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text</p>
+  <p class="foot" id="footNote">Free · no sign-up · your download is ready as soon as it finishes</p>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -423,11 +338,8 @@ function applyTheme(t) {
 }
 applyTheme(localStorage.getItem("theme")
   || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
-$("themeToggle").addEventListener("click", () => {
-  applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light");
-  // Google renders its button as an iframe, so it needs re-rendering to match.
-  if ($("landing").style.display !== "none") renderSignInButton();
-});
+$("themeToggle").addEventListener("click", () =>
+  applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light"));
 
 // Populate the voice dropdown from real Edge-TTS data.
 async function loadVoices() {
@@ -468,12 +380,12 @@ function setPreviewBtn(loading) {
 
 // --- Mode tabs: "Book -> Audio" (TTS) and "Audio -> Text" (STT).
 const SUBTITLES = {
-  tts: "Turn any PDF into a narrated, chaptered audiobook — pick a voice, press go.",
-  stt: "Turn a recording into a clean, punctuated transcript with timestamps.",
+  tts: "Turn a PDF into an audiobook you can listen to. Pick a voice, press go, download it.",
+  stt: "Turn a recording into text you can read and search. Upload it, and download the transcript.",
 };
 const FOOTNOTES = {
-  tts: "Runs locally · free voices via Edge-TTS · no data leaves your machine except TTS text",
-  stt: "Runs locally · transcribed on-device with faster-whisper · nothing is uploaded",
+  tts: "Free · no sign-up · your download is ready as soon as it finishes",
+  stt: "Free · no sign-up · your audio is transcribed on this machine, not sent to a service",
 };
 
 document.querySelectorAll(".tab").forEach(btn => {
@@ -569,245 +481,11 @@ function showResults(jobId, j) {
   if (j.has_text_pdf) { pdf.style.display = "flex"; pdf.href = `/jobs/${jobId}/textpdf`; }
   else pdf.style.display = "none";
 
-  lastJob.tts = jobId;
-  if (driveCfg && driveCfg.drive_enabled) {
-    $("ttsSaveBar").style.display = "flex";
-    $("ttsSaveStatus").textContent = "";
-    $("ttsSaveStatus").className = "drive-status";
-    $("ttsSaveBtn").textContent = "▲ Save to my Drive";
-  }
 }
 
 // --- Google Drive: "bring your own storage".
 // The access token lives in this variable and nowhere else — never
 // localStorage, never a cookie, never sent to us except as a Bearer header.
-let driveCfg = null, tokenClient = null, driveToken = null;
-const lastJob = { tts: null, stt: null };
-
-// --- Sign-in gate -------------------------------------------------------------
-// Identity first (openid/email/profile via Sign In With Google). Drive access is
-// requested LATER, only when someone actually clicks Save — so first contact is
-// a friendly "sign in" rather than "this app wants your Google Drive".
-//
-// NOTE: this gate is UX, not security. The API endpoints are still open; real
-// enforcement means verifying this ID token server-side on every request.
-const SESSION_KEY = "bas.profile";
-
-function decodeJwt(token) {
-  const part = token.split(".")[1];
-  const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
-  return JSON.parse(decodeURIComponent(escape(json)));
-}
-
-function loadSession() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-    if (!saved) return null;
-    if (saved.exp && Date.now() / 1000 > saved.exp) {   // expired -> sign out
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    return saved;
-  } catch { return null; }
-}
-
-function onCredential(response) {
-  let claims;
-  try { claims = decodeJwt(response.credential); }
-  catch { return showSignInError("That sign-in response couldn't be read."); }
-  const profile = {
-    sub: claims.sub, name: claims.name || claims.email,
-    email: claims.email, picture: claims.picture, exp: claims.exp,
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
-  showApp(profile);
-}
-
-function showSignInError(msg) {
-  const note = $("signinNote");
-  note.textContent = "⚠️ " + msg;
-  note.style.color = "var(--err)";
-}
-
-function showApp(profile) {
-  $("landing").style.display = "none";
-  $("app").style.display = "block";
-  $("account").style.display = "flex";
-  $("who").textContent = profile.name || profile.email || "Signed in";
-  $("who").title = profile.email || "";
-  if (profile.picture) $("avatar").src = profile.picture;
-  else $("avatar").style.display = "none";
-  if (driveCfg && driveCfg.drive_enabled) $("libraryBtn").style.display = "block";
-}
-
-function showLanding() {
-  $("app").style.display = "none";
-  $("landing").style.display = "block";
-}
-
-$("signOutBtn").addEventListener("click", () => {
-  localStorage.removeItem(SESSION_KEY);
-  driveToken = null;                          // drop Drive access too
-  if (window.google && google.accounts && google.accounts.id) {
-    google.accounts.id.disableAutoSelect();
-  }
-  showLanding();
-  renderSignInButton();
-});
-
-function renderSignInButton() {
-  if (!driveCfg || !driveCfg.google_client_id || !window.google || !google.accounts) return;
-  google.accounts.id.initialize({
-    client_id: driveCfg.google_client_id,
-    callback: onCredential,
-    auto_select: false,
-  });
-  const el = $("gsiButton");
-  el.innerHTML = "";
-  google.accounts.id.renderButton(el, {
-    theme: root.getAttribute("data-theme") === "light" ? "outline" : "filled_black",
-    size: "large", text: "continue_with", shape: "pill", width: 280,
-  });
-}
-
-async function initAuth() {
-  try { driveCfg = await (await fetch("/auth/config")).json(); }
-  catch { return showSignInError("Couldn't reach the server."); }
-
-  if (!driveCfg.drive_enabled) {
-    // No client id configured: don't strand the user behind a gate that can
-    // never open — let them straight into the tool.
-    showApp({ name: "Local user" });
-    $("account").style.display = "none";
-    return;
-  }
-
-  const existing = loadSession();
-  if (existing) { showApp(existing); return; }
-
-  // Wait for the Google script, which is loaded async.
-  let waited = 0;
-  const timer = setInterval(() => {
-    if (window.google && google.accounts && google.accounts.id) {
-      clearInterval(timer);
-      renderSignInButton();
-    } else if ((waited += 200) > 6000) {
-      clearInterval(timer);
-      showSignInError("Google sign-in didn't load. Check your connection and reload.");
-    }
-  }, 200);
-}
-initAuth();
-
-function ensureTokenClient() {
-  if (tokenClient) return tokenClient;
-  if (!window.google || !google.accounts) throw new Error(
-    "Google sign-in didn't load. Check your connection and reload.");
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: driveCfg.google_client_id,
-    scope: driveCfg.scope,
-    callback: () => {},                      // replaced per request below
-  });
-  return tokenClient;
-}
-
-// Run `fn(token)`, asking Google for consent first if we don't have a token yet.
-function withDriveToken(fn, onError) {
-  if (driveToken) return fn(driveToken);
-  let client;
-  try { client = ensureTokenClient(); }
-  catch (e) { return onError(e.message); }
-  client.callback = (resp) => {
-    if (resp.error) return onError("Google sign-in was cancelled.");
-    driveToken = resp.access_token;
-    fn(driveToken);
-  };
-  client.requestAccessToken();
-}
-
-// --- "My library": resolve the folder server-side, then open it.
-$("libraryBtn").addEventListener("click", () => {
-  const btn = $("libraryBtn");
-  const label = btn.textContent;
-  btn.disabled = true; btn.textContent = "Opening…";
-  const done = () => { btn.disabled = false; btn.textContent = label; };
-
-  withDriveToken(async (token) => {
-    try {
-      const res = await fetch("/drive/library", {
-        method: "POST", headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-      window.open((await res.json()).url, "_blank", "noopener");
-    } catch (e) { alert("Couldn't open your library: " + e.message); }
-    finally { done(); }
-  }, (msg) => { alert(msg); done(); });
-});
-
-// --- "Save to my Drive", for either mode.
-function wireSave(kind, btnId, statusId) {
-  $(btnId).addEventListener("click", () => {
-    const jobId = lastJob[kind];
-    if (!jobId) return;
-    const btn = $(btnId), status = $(statusId);
-    status.className = "drive-status";
-    status.textContent = "Connecting to Google…";
-    btn.disabled = true;
-
-    withDriveToken(async (token) => {
-      try {
-        const res = await fetch(`/jobs/${jobId}/save-to-drive`, {
-          method: "POST", headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-        pollSave(jobId, btn, status);
-      } catch (e) {
-        status.className = "drive-status bad";
-        status.textContent = "⚠️ " + e.message;
-        btn.disabled = false;
-      }
-    }, (msg) => {
-      status.className = "drive-status bad";
-      status.textContent = "⚠️ " + msg;
-      btn.disabled = false;
-    });
-  });
-}
-
-function pollSave(jobId, btn, status) {
-  const timer = setInterval(async () => {
-    let s;
-    try { s = await (await fetch(`/jobs/${jobId}/save-status`)).json(); }
-    catch { return; }
-
-    if (s.status === "running") {
-      status.textContent = s.total
-        ? `Uploading ${s.index} of ${s.total}…` : "Preparing…";
-      return;
-    }
-    clearInterval(timer);
-    btn.disabled = false;
-
-    if (s.status === "done") {
-      status.className = "drive-status ok";
-      status.innerHTML = `✓ Saved ${s.saved} file${s.saved === 1 ? "" : "s"} — ` +
-        `<a href="${s.folder_url}" target="_blank" rel="noopener">open folder</a>`;
-      btn.textContent = "▲ Save again";
-    } else if (s.status === "partial") {
-      // A 21-file save shouldn't be reported as a flat failure.
-      status.className = "drive-status bad";
-      status.innerHTML = `Saved ${s.saved}, ${s.failed.length} failed — ` +
-        `<a href="${s.folder_url}" target="_blank" rel="noopener">open folder</a>`;
-    } else if (s.status === "error") {
-      status.className = "drive-status bad";
-      status.textContent = "⚠️ " + (s.error || "Save failed.");
-    }
-  }, 1200);
-}
-
-wireSave("tts", "ttsSaveBtn", "ttsSaveStatus");
-wireSave("stt", "sttSaveBtn", "sttSaveStatus");
-
 // --- STT: audio -> transcript.
 let sttReadyChecked = false;
 async function checkSttReady() {
@@ -861,13 +539,6 @@ async function showSttResults(jobId, j) {
   $("dlMd").href = `/jobs/${jobId}/transcript.md`;
   $("dlJson").href = `/jobs/${jobId}/transcript.json`;
 
-  lastJob.stt = jobId;
-  if (driveCfg && driveCfg.drive_enabled) {
-    $("sttSaveBar").style.display = "flex";
-    $("sttSaveStatus").textContent = "";
-    $("sttSaveStatus").className = "drive-status";
-    $("sttSaveBtn").textContent = "▲ Save to my Drive";
-  }
 
   const box = $("sttPreview");
   if (j.empty) {
