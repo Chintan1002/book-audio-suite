@@ -1,0 +1,182 @@
+# Book·Audio Suite
+
+A local, zero-cost web application that converts in both directions between
+books and audio:
+
+- **Book → Audio (TTS):** a PDF becomes a chaptered audiobook (`.mp3` / `.m4b`)
+- **Audio → Text (STT):** a recording becomes a punctuated transcript with
+  word-level timestamps (`.txt` / `.md` / `.json`)
+
+Upload, convert, download. No accounts, no paid APIs, no third-party service
+sees the content — transcription runs on the machine itself.
+
+**Stack:** Python 3.10+ · FastAPI · PyMuPDF · Edge-TTS · faster-whisper
+(CTranslate2) · FFmpeg · PostgreSQL (optional) · vanilla JS/CSS frontend
+
+---
+
+## What it does
+
+### Book → Audio
+Extracts text from a PDF (text layer, with per-page OCR fallback for scanned
+pages), cleans it for narration, detects chapter boundaries, synthesizes each
+chapter with a chosen neural voice, and stitches the result into one audiobook
+plus per-chapter files. 47 English voices, adjustable narration speed, and a
+voice preview before committing to a full conversion.
+
+### Audio → Text
+Normalizes any audio container to 16 kHz mono via FFmpeg, transcribes it with
+faster-whisper (word-level timestamps, voice-activity filtering), restores
+paragraph structure from speech pauses, and emits plain text, Markdown, and
+timestamped JSON.
+
+---
+
+## Architecture
+
+Six independently runnable stages connected by plain data, orchestrated by a
+thin pipeline, wrapped in an async job API.
+
+```
+PDF ──► extract ──► clean ──► detect chapters ──► chunk ──► synthesize ──► stitch ──► audiobook
+         (PyMuPDF    (regex     (embedded TOC,     (sentence  (Edge-TTS,    (FFmpeg)
+          + OCR)      pipeline)  heading fallback)  packing)   async pool)
+
+audio ──► ingest ──► transcribe ──► format ──► output ──► transcript
+          (FFmpeg)    (faster-      (pause-     (txt/md/
+                       whisper)      aware)      json)
+```
+
+| Module | Responsibility |
+|---|---|
+| `extractor.py` | PDF text extraction; per-page OCR fallback for scanned pages |
+| `cleaner.py` | Ordered regex pipeline: de-hyphenation, header/page-number stripping, paragraph reflow |
+| `chapters.py` | Chapter detection — embedded PDF outline first, heading heuristics as fallback |
+| `tts.py` | Sentence-boundary chunker + concurrent Edge-TTS synthesis |
+| `stitch.py` | FFmpeg concatenation to `.mp3` (stream copy) or `.m4b` (AAC + chapter marks) |
+| `textpdf.py` | Paginated text PDF for scanned books |
+| `pipeline.py` | End-to-end orchestration with progress reporting and resume |
+| `stt/` | Speech-to-text package: ingest, transcribe, format, output, CLI |
+| `app.py` | FastAPI async-job web layer for both pipelines |
+| `db/` | Repository abstraction + PostgreSQL schema with row-level security |
+
+~4,000 lines of typed Python plus a dependency-free frontend.
+
+---
+
+## Engineering decisions worth noting
+
+**Ordering under concurrency.** TTS chunks are synthesized concurrently against
+a rate-limited API, so they finish out of order. Each chunk's position is frozen
+into its index *before* any network call and encoded in its filename, so correct
+playback order is recovered by sorting filenames — never by completion time.
+
+**Long jobs behind a short protocol.** A full book is minutes of work, far
+longer than an HTTP request should live. Uploads start a background job on a
+thread pool and return immediately; the browser polls for stage and progress.
+`run_pipeline` calls `asyncio.run` internally, which is illegal inside a running
+event loop but safe on a pool worker — this is why the design is threads around
+async rather than async throughout.
+
+**Expensive resources loaded once.** The Whisper model (~140 MB) is constructed
+once and reused across requests, and transcription is serialized behind a lock
+because a single model instance cannot be driven concurrently by two workers.
+
+**Failure isolation.** Boundaries fail loudly (a corrupt PDF, a missing binary);
+mid-run failures degrade gracefully — one bad page or one failed chunk never
+kills a job. The pipeline refuses to stitch if any chunk failed, rather than
+silently shipping a book with a gap in it.
+
+**The filesystem as checkpoint.** Chunk audio is written as `chunk_<index>.mp3`,
+so a crashed conversion resumes by skipping files that already exist — no
+separate state store needed.
+
+**Swappable engines.** Synthesis sits behind a single coroutine signature
+(`async (text, path) -> None`), so a local engine can replace the cloud one
+without touching the chunker or the concurrency harness. Persistence sits behind
+a repository interface with in-memory and PostgreSQL implementations, selected
+by environment variable — the app runs with no database at all.
+
+---
+
+## Verification
+
+Each stage is independently runnable with its own smoke test. Beyond that:
+
+- **Stitching is sample-exact** — the concatenated audiobook's duration equals
+  the sum of its parts to the millisecond (1411.368 s across 6 chunks), proving
+  no audio is dropped or duplicated.
+- **Round-trip validated** — audio generated by the TTS half, fed back through
+  the STT half, returns the original text verbatim apart from one proper noun.
+- **Resume verified by file mtime** — deleting one chunk and re-running
+  re-synthesized only that chunk; the others were untouched.
+- **Database layer tested against real PostgreSQL 16** — schema applied,
+  cross-user reads confirmed to return nothing, full-text search verified for
+  both hits and misses, and a completed job confirmed still downloadable after a
+  full server restart.
+
+---
+
+## Security
+
+A written security assessment (`SECURITY.md`) audits the application against its
+own threat model rather than assuming it is safe. It documents verified-safe
+properties (no shell invocation, no path traversal, no static file exposure,
+credentials never logged or persisted) alongside open findings with severity,
+root cause at file and line, and remediation — including a demonstrated proof
+that a client-side sign-in gate provides no server-side protection.
+
+---
+
+## Running it
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements.txt       # core + TTS
+./.venv/bin/pip install -r requirements_stt.txt   # speech-to-text
+brew install ffmpeg                               # required by both pipelines
+
+./.venv/bin/python -m uvicorn app:app --port 8000
+```
+
+Open `http://localhost:8000`.
+
+Every stage also runs standalone:
+
+```bash
+./.venv/bin/python pipeline.py book.pdf out/ --title "..." --resume
+./.venv/bin/python -m stt.cli transcribe recording.mp3 --model base
+./.venv/bin/python chapters.py book.pdf        # inspect chapter detection
+```
+
+Optional PostgreSQL persistence (jobs survive restarts):
+
+```bash
+psql "$DATABASE_URL" -f db/schema.sql
+export DATABASE_URL="postgresql://..."
+```
+
+---
+
+## Project documentation
+
+The repository carries its own product and engineering documentation: product
+requirements for each feature, executable task briefs, a test plan, a security
+assessment, and a system map rendered as a PDF — written as specifications
+before implementation rather than notes after it.
+
+---
+
+## Status and known limitations
+
+Both pipelines work end to end locally. Honestly stated open items:
+
+- Chapter detection falls back to heading heuristics when a PDF has no embedded
+  outline, and over-splits on books that print page numbers in the header; a
+  regression fixture reproduces it.
+- Generated files are retained indefinitely; a 7-day sweep is specified but not
+  yet wired up.
+- The app has no authentication or rate limiting and is **not yet safe to expose
+  publicly** — see `SECURITY.md` for the blocking items and their fixes.
+- Live-microphone streaming exists in the `stt` package but is not wired into the
+  web app.
